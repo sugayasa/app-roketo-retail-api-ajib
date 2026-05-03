@@ -1,0 +1,46 @@
+{
+    "name": "codeigniter4/appstarter",
+    "type": "project",
+    "description": "CodeIgniter4 starter app",
+    "homepage": "https://codeigniter.com",
+    "license": "MIT",
+    "require": {
+        "php": "^8.3",
+        "codeigniter4/framework": "^4.4",
+        "google/apiclient": "^2.13",
+        "hashids/hashids": "^4.1",
+        "vlucas/phpdotenv": "^5.6",
+        "firebase/php-jwt": "^6.11",
+        "phpoffice/phpspreadsheet": "^5.1",
+        "mpdf/mpdf": "^8.2"
+    },
+    "require-dev": {
+        "fakerphp/faker": "^1.9",
+        "mikey179/vfsstream": "^1.6",
+        "phpunit/phpunit": "^9.1"
+    },
+    "suggest": {
+        "ext-fileinfo": "Improves mime type detection for files"
+    },
+    "autoload": {
+        "exclude-from-classmap": [
+            "**/Database/Migrations/**"
+        ],
+        "files": [
+            "app/Helpers/standardResponse_helper.php"
+        ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\Support\\": "tests/_support"
+        }
+    },
+    "scripts": {
+        "test": "phpunit"
+    },
+    "support": {
+        "forum": "https://forum.codeigniter.com/",
+        "source": "https://github.com/codeigniter4/CodeIgniter4",
+        "slack": "https://codeigniterchat.slack.com"
+    }
+}
