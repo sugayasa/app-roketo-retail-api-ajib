@@ -138,3 +138,5 @@ docker-compose.yml
 /docker-data
 DOCKER_README.md
 Dockerfile
+.DS_Store
+writable/.DS_Store

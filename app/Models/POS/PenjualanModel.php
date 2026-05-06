@@ -281,7 +281,7 @@ class PenjualanModel extends Model
     
     public function getListDiskonEvent($idToko)
     {	
-        $this->select("IDDISKONEVENT, NAMAEVENT, DESKRIPSI, TIPEDISKON, JUMLAHDISKON");
+        $this->select("IDDISKONEVENT, NAMAEVENT, DESKRIPSI, TIPEDISKON, JUMLAHDISKON, ISDISKONPERITEM");
         $this->from('t_diskonevent', true);
         $this->where("JSON_CONTAINS(ARRIDTOKO, JSON_ARRAY($idToko))", null, false);
         $this->where('TANGGALBERLAKUAWAL <=', date('Y-m-d'));
@@ -289,13 +289,13 @@ class PenjualanModel extends Model
         $this->orderBy('TANGGALBERLAKUAWAL', 'DESC');
 
         $result     =   $this->get()->getResultObject();
-        if(is_null($result)) return false;
+        if(is_null($result)) return [];
         return $result;
 	}
 
     public function getDetailDiskonEvent($idDiskonEvent)
     {	
-        $this->select("NAMAEVENT, TIPEDISKON, JUMLAHDISKON");
+        $this->select("NAMAEVENT, TIPEDISKON, JUMLAHDISKON, ISDISKONPERITEM");
         $this->from('t_diskonevent', true);
         $this->where('IDDISKONEVENT', $idDiskonEvent);
         $this->limit(1);

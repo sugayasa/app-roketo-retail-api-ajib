@@ -258,7 +258,7 @@ class PenjualanModel extends Model
 
     public function getDaftarDiskonEventPenjualan($idPenjualanRekap)
     {	
-        $this->select("B.NAMAEVENT, B.TIPEDISKON, A.NOMINAL, A.KETERANGAN");
+        $this->select("B.NAMAEVENT, B.TIPEDISKON, A.ISDISKONPERITEM, A.NOMINAL, A.KETERANGAN");
         $this->from('t_penjualandiskonevent AS A', true);
         $this->join('t_diskonevent AS B', 'A.IDDISKONEVENT = B.IDDISKONEVENT', 'LEFT');
         $this->where('A.IDPENJUALANREKAP', $idPenjualanRekap);

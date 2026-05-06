@@ -451,6 +451,14 @@ class Penjualan extends ResourceController
         $dataDiskonEvent=   $penjualanModel->getListDiskonEvent($idToko);
         $dataDiskonEvent=   !$dataDiskonEvent ? [] : encodeDatabaseObjectResultKey($dataDiskonEvent, ['IDDISKONEVENT']);
 
+        if(count($dataDiskonEvent) > 0){
+            foreach($dataDiskonEvent as $keyDataDiskonEvent){
+                $keyDataDiskonEvent->TIPEDISKON         =   intval($keyDataDiskonEvent->TIPEDISKON);
+                $keyDataDiskonEvent->JUMLAHDISKON       =   intval($keyDataDiskonEvent->JUMLAHDISKON);
+                $keyDataDiskonEvent->ISDISKONPERITEM    =   intval($keyDataDiskonEvent->ISDISKONPERITEM) == 1 ? true : false;
+            }
+        }
+
         return $this->setResponseFormat('json')->respond([
             "arrDataBarangSKUDiskon"=>  $arrDataBarangSKUDiskon == [] ? [] : encodeDataArrayKey($arrDataBarangSKUDiskon, ['idBarangSKU', 'idBarangSatuan', 'idDiskonRetailPaket']),
             "dataCustomer"          =>  $dataCustomer,
@@ -759,12 +767,41 @@ class Penjualan extends ResourceController
             $namaDiskonEventDB      =   isset($detailDiskonEvent['NAMAEVENT']) && $detailDiskonEvent['NAMAEVENT'] != "" ? $detailDiskonEvent['NAMAEVENT'] : '-';
             $jumlahDiskonEventDB    =   isset($detailDiskonEvent['JUMLAHDISKON']) && $detailDiskonEvent['JUMLAHDISKON'] != "" ? $detailDiskonEvent['JUMLAHDISKON'] : 0;
             $nominalDiskonEventDB   =   $tipeDiskonEventDB == 1 ? $totalHargaBarang * $jumlahDiskonEventDB / 100 : $jumlahDiskonEventDB;
+            $isDiskonPerItem        =   isset($detailDiskonEvent['ISDISKONPERITEM']) && $detailDiskonEvent['ISDISKONPERITEM'] && intval($detailDiskonEvent['ISDISKONPERITEM']) == 1 ? true : false;
+            $dataItem               =   [];
+
+            if($isDiskonPerItem){
+                $nominalDiskonEventDB   =   0;
+                $totalJumlahItem        =   0;
+
+                foreach($arrDataBarang as $keyDataBarang) {
+                    $hargaSatuan            =   isset($keyDataBarang->harga) ? $keyDataBarang->harga : 0;
+                    $jumlahItem             =   isset($keyDataBarang->jumlah) ? $keyDataBarang->jumlah : 0;
+                    $totalDiskonItem        =   $tipeDiskonEventDB == 1 ? $hargaSatuan * $jumlahItem * $jumlahDiskonEventDB / 100 : $jumlahDiskonEventDB * $jumlahItem;
+                    $nominalDiskonEventDB   +=  $totalDiskonItem;
+                    $totalJumlahItem        +=  $jumlahItem;
+                    $dataItem[]               =   $keyDataBarang;
+                }
+
+                foreach($arrDataBarangPaket as $keyDataBarangPaket) {
+                    $hargaSatuan            =   isset($keyDataBarangPaket->harga) ? $keyDataBarangPaket->harga : 0;
+                    $jumlahItem             =   isset($keyDataBarangPaket->jumlahPaket) ? $keyDataBarangPaket->jumlahPaket : 0;
+                    $totalDiskonItem        =   $tipeDiskonEventDB == 1 ? $hargaSatuan * $jumlahItem * $jumlahDiskonEventDB / 100 : $jumlahDiskonEventDB * $jumlahItem;
+                    $nominalDiskonEventDB   +=  $totalDiskonItem;
+                    $totalJumlahItem        +=  $jumlahItem;
+                    $dataItem[]               =   $keyDataBarangPaket;
+                }
+
+                if($tipeDiskonEventDB == 1) $keteranganDiskonEvent  =   $totalJumlahItem.' item - potongan '.$jumlahDiskonEventDB.'% per barang. '.$keteranganDiskonEvent;
+                else $keteranganDiskonEvent =   $totalJumlahItem.' item x '.number_format($jumlahDiskonEventDB, 0, ',', '.').', total Rp. '.number_format($nominalDiskonEventDB, 0, ',', '.').'. '.$keteranganDiskonEvent;
+            }
 
             if($nominalDiskonRequest != $nominalDiskonEventDB) return throwResponseNotFound('Perhitungan nominal diskon event ['.$namaDiskonEventDB.'] tidak sesuai, harap ulangi proses penjualan');
 
             $arrInsertDataDiskonEvent[]   =   [
                 'IDPENJUALANREKAP'  =>  null,
                 'IDDISKONEVENT'     =>  $idDiskonEvent,
+                'ISDISKONPERITEM'   =>  $isDiskonPerItem,
                 'NOMINAL'           =>  $nominalDiskonEventDB,
                 'KETERANGAN'        =>  $keteranganDiskonEvent
             ];
