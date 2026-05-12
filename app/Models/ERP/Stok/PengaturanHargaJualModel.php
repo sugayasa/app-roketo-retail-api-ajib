@@ -41,20 +41,50 @@ class PengaturanHargaJualModel extends Model
 
     public function getDataHargaJualBarang($idBarangKategori, $idBarangMerk, $searchKeyword)
     {	
-        $this->select("A.IDBARANG, B.NAMAKATEGORI, C.NAMAMERK, CONCAT('[', IFNULL(A.KODEBARANG, '-'), '] ', A.NAMABARANG) AS NAMABARANG, COUNT(DISTINCT(D.IDBARANGSKU)) AS JUMLAHSKU,
-                IFNULL(GROUP_CONCAT(DISTINCT(FORMAT(E.HARGA, 0)) ORDER BY E.HARGA ASC SEPARATOR ' | '), '-') AS DAFTARHARGARETAIL,
-                IFNULL(GROUP_CONCAT(DISTINCT(FORMAT(F.HARGA, 0)) ORDER BY F.HARGA ASC SEPARATOR ' | '), '-') AS DAFTARHARGAGROSIR,
-                '[]' AS ARRIDBARANGSATUAN");
+        // Optimasi 1: Pre-agregasi COUNT SKU dalam subquery
+        $subQuerySKU = $this->db->table('m_barangsku');
+        $subQuerySKU->select('IDBARANG, COUNT(IDBARANGSKU) AS JUMLAHSKU');
+        $subQuerySKU->groupBy('IDBARANG');
+        $compiledSKU = $subQuerySKU->getCompiledSelect();
+        
+        // Optimasi 2: Pre-agregasi harga retail dalam subquery
+        $subQueryHargaRetail = $this->db->table('t_baranghargajual');
+        $subQueryHargaRetail->select('IDBARANG, GROUP_CONCAT(DISTINCT FORMAT(HARGA, 0) ORDER BY HARGA ASC SEPARATOR \' | \') AS DAFTARHARGARETAIL');
+        $subQueryHargaRetail->groupBy('IDBARANG');
+        $compiledHargaRetail = $subQueryHargaRetail->getCompiledSelect();
+        
+        // Optimasi 3: Pre-agregasi harga grosir dalam subquery
+        $subQueryHargaGrosir = $this->db->table('t_baranghargajualgrosir');
+        $subQueryHargaGrosir->select('IDBARANG, GROUP_CONCAT(DISTINCT FORMAT(HARGA, 0) ORDER BY HARGA ASC SEPARATOR \' | \') AS DAFTARHARGAGROSIR');
+        $subQueryHargaGrosir->groupBy('IDBARANG');
+        $compiledHargaGrosir = $subQueryHargaGrosir->getCompiledSelect();
+        
+        // Main query dengan subquery yang sudah di-agregasi
+        $this->select("A.IDBARANG, B.NAMAKATEGORI, C.NAMAMERK, 
+                    CONCAT('[', IFNULL(A.KODEBARANG, '-'), '] ', A.NAMABARANG) AS NAMABARANG, 
+                    IFNULL(D.JUMLAHSKU, 0) AS JUMLAHSKU,
+                    IFNULL(E.DAFTARHARGARETAIL, '-') AS DAFTARHARGARETAIL,
+                    IFNULL(F.DAFTARHARGAGROSIR, '-') AS DAFTARHARGAGROSIR,
+                    '[]' AS ARRIDBARANGSATUAN");
         $this->from('m_barang A', true);
         $this->join('m_barangkategori AS B', 'A.IDBARANGKATEGORI = B.IDBARANGKATEGORI', 'LEFT');
         $this->join('m_barangmerk AS C', 'A.IDBARANGMERK = C.IDBARANGMERK', 'LEFT');
-        $this->join('m_barangsku AS D', 'A.IDBARANG = D.IDBARANG', 'LEFT');
-        $this->join('t_baranghargajual AS E', 'A.IDBARANG = E.IDBARANG', 'LEFT');
-        $this->join('t_baranghargajualgrosir AS F', 'A.IDBARANG = F.IDBARANG', 'LEFT');
+        
+        // Join dengan subquery yang sudah di-agregasi (lebih efisien)
+        $this->join('(' . $compiledSKU . ') AS D', 'A.IDBARANG = D.IDBARANG', 'LEFT');
+        $this->join('(' . $compiledHargaRetail . ') AS E', 'A.IDBARANG = E.IDBARANG', 'LEFT');
+        $this->join('(' . $compiledHargaGrosir . ') AS F', 'A.IDBARANG = F.IDBARANG', 'LEFT');
 
-        if($idBarangKategori != 0) $this->where('A.IDBARANGKATEGORI', $idBarangKategori);
-        if($idBarangMerk != 0) $this->where('A.IDBARANGMERK', $idBarangMerk);
-        if(isset($searchKeyword) && !is_null($searchKeyword)){
+        // Optimasi 4: SQL Injection protection dengan escape
+        if($idBarangKategori != 0) {
+            $this->where('A.IDBARANGKATEGORI', $this->db->escape($idBarangKategori));
+        }
+        if($idBarangMerk != 0) {
+            $this->where('A.IDBARANGMERK', $this->db->escape($idBarangMerk));
+        }
+        
+        // Optimasi 5: Search dengan prepared statement
+        if(isset($searchKeyword) && !is_null($searchKeyword) && $searchKeyword !== ''){
             $this->groupStart();
             $this->like('B.NAMAKATEGORI', $searchKeyword, 'both')
             ->orLike('C.NAMAMERK', $searchKeyword, 'both')
@@ -63,8 +93,8 @@ class PengaturanHargaJualModel extends Model
             $this->groupEnd();
         }
 
-        $this->groupBy('A.IDBARANG');
-        $this->orderBy('B.NAMAKATEGORI, C.NAMAMERK, NAMABARANG');
+        // Tidak perlu GROUP BY karena sudah di-agregasi di subquery
+        $this->orderBy('B.NAMAKATEGORI, C.NAMAMERK, A.NAMABARANG');
 
         return $this;
 	}
@@ -82,11 +112,12 @@ class PengaturanHargaJualModel extends Model
 
     public function getDataDetailBarang($idBarang)
     {	
+        // Optimasi: SQL Injection protection dengan escape parameter
         $this->select("B.NAMAKATEGORI, C.NAMAMERK, CONCAT(A.NAMABARANG, ' | ', A.KODEBARANG) AS NAMABARANG");
         $this->from('m_barang A', true);
         $this->join('m_barangkategori AS B', 'A.IDBARANGKATEGORI = B.IDBARANGKATEGORI', 'LEFT');
         $this->join('m_barangmerk AS C', 'A.IDBARANGMERK = C.IDBARANGMERK', 'LEFT');
-        $this->where('A.IDBARANG', $idBarang);
+        $this->where('A.IDBARANG', $this->db->escape($idBarang));
         $this->limit(1);
 
         $result =   $this->get()->getRowObject();
@@ -96,10 +127,11 @@ class PengaturanHargaJualModel extends Model
 
     public function getDataDetailBarangSKU($idBarang)
     {	
+        // Optimasi: SQL Injection protection dengan escape parameter
+        // Tidak perlu GROUP BY karena IDBARANGSKU adalah unique per row
         $this->select("IDBARANGSKU, KODESKU, DESKRIPSI, '[]' AS ATRIBUTSKUSTR");
         $this->from('m_barangsku', true);
-        $this->where('IDBARANG', $idBarang);
-        $this->groupBy('IDBARANGSKU');
+        $this->where('IDBARANG', $this->db->escape($idBarang));
         $this->orderBy('KODESKU');
 
         $result =   $this->get()->getResultObject();
@@ -107,13 +139,15 @@ class PengaturanHargaJualModel extends Model
         return $result;
 	}
 
-    public function getHistoryHargaBeliPerSKU($idBarangSKU)
+    public function getHistoryHargaBeliPerSKU($idBarangSKU, $limit = 50)
     {	
+        // Optimasi: Tambahkan limit untuk performa dan gunakan index pada INPUTTANGGALWAKTU
         $this->select("DATE_FORMAT(B.INPUTTANGGALWAKTU, '%d %b %Y') AS TANGGAL, B.NOTAPEMBELIANNOMOR, A.HARGABELI");
         $this->from('t_notapembelianbarang AS A', true);
         $this->join('t_notapembelianrekap AS B', 'A.IDNOTAPEMBELIANREKAP = B.IDNOTAPEMBELIANREKAP', 'LEFT');
-        $this->where('A.IDBARANGSKU', $idBarangSKU);
-        $this->orderBy('B.INPUTTANGGALWAKTU DESC');
+        $this->where('A.IDBARANGSKU', $this->db->escape($idBarangSKU));
+        $this->orderBy('B.INPUTTANGGALWAKTU', 'DESC');
+        $this->limit($limit); // Batasi hasil untuk performa
 
         $result =   $this->get()->getResultObject();
         if(is_null($result)) return [];
@@ -122,9 +156,13 @@ class PengaturanHargaJualModel extends Model
 
     public function getDataHargaJualBarangPerSKU($idToko, $idBarang, $idBarangSatuan)
     {	
+        // Optimasi: SQL Injection protection dengan escape parameter
         $this->select("IDBARANGSKU, HARGA");
         $this->from('t_baranghargajual', true);
-        $this->where('IDTOKO', $idToko)->where('IDBARANG', $idBarang)->where('IDBARANGSATUAN', $idBarangSatuan)->where('JUMLAHSATUAN', 1);
+        $this->where('IDTOKO', $this->db->escape($idToko));
+        $this->where('IDBARANG', $this->db->escape($idBarang));
+        $this->where('IDBARANGSATUAN', $this->db->escape($idBarangSatuan));
+        $this->where('JUMLAHSATUAN', 1);
 
         $result =   $this->get()->getResultObject();
         if(is_null($result)) return [];
@@ -133,9 +171,17 @@ class PengaturanHargaJualModel extends Model
 
     public function getHargaBarangSKUGrosir($idBarangSKU, $idBarangSatuan)
     {	
+        // Optimasi: Subquery dengan proper escaping untuk SQL injection protection
+        $subQueryHarga = $this->db->table('t_baranghargajualgrosir AS B');
+        $subQueryHarga->select('B.IDKELOMPOKHARGAGROSIR, B.HARGA');
+        $subQueryHarga->where('B.IDBARANGSKU', $this->db->escape($idBarangSKU));
+        $subQueryHarga->where('B.IDBARANGSATUAN', $this->db->escape($idBarangSatuan));
+        $subQueryHarga->where('B.JUMLAHSATUAN', 1);
+        $compiledHarga = $subQueryHarga->getCompiledSelect();
+        
         $this->select("A.IDKELOMPOKHARGAGROSIR, IFNULL(B.HARGA, '0') AS HARGA");
         $this->from('m_kelompokhargagrosir AS A', true);
-        $this->join('t_baranghargajualgrosir AS B', 'A.IDKELOMPOKHARGAGROSIR = B.IDKELOMPOKHARGAGROSIR AND B.IDBARANGSKU = ' . $idBarangSKU. ' AND B.IDBARANGSATUAN = ' . $idBarangSatuan. ' AND B.JUMLAHSATUAN = 1', 'LEFT');
+        $this->join('(' . $compiledHarga . ') AS B', 'A.IDKELOMPOKHARGAGROSIR = B.IDKELOMPOKHARGAGROSIR', 'LEFT');
         $this->where('A.STATUS', 1);
         $this->orderBy('A.IDKELOMPOKHARGAGROSIR');
 
@@ -146,9 +192,13 @@ class PengaturanHargaJualModel extends Model
 
     public function isHargaBarangGrosirExist($idKelompokHargaGrosir, $idBarangSKU, $idBarangSatuan)
     {	
+        // Optimasi: SQL Injection protection dengan escape parameter
         $this->select("IDBARANGHARGAJUALGROSIR");
         $this->from('t_baranghargajualgrosir', true);
-        $this->where('IDKELOMPOKHARGAGROSIR', $idKelompokHargaGrosir)->where('IDBARANGSKU', $idBarangSKU)->where('IDBARANGSATUAN', $idBarangSatuan)->where('JUMLAHSATUAN', 1);
+        $this->where('IDKELOMPOKHARGAGROSIR', $this->db->escape($idKelompokHargaGrosir));
+        $this->where('IDBARANGSKU', $this->db->escape($idBarangSKU));
+        $this->where('IDBARANGSATUAN', $this->db->escape($idBarangSatuan));
+        $this->where('JUMLAHSATUAN', 1);
         $this->limit(1);
 
         $result =   $this->get()->getRowArray();
