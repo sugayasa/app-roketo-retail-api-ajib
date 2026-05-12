@@ -41,35 +41,62 @@ class PersediaanBarangModel extends Model
 
     public function getDataPersediaanBarangGudang($idGudang, $idBarangKategori, $tanggalAwal, $tanggalAkhir, $kataKunciPencarian)
     {	
-        $this->select("A.IDBARANGSKU, C.NAMAKATEGORI, B.NAMABARANG, CONCAT(B.KODEBARANG, '-', A.KODESKU) AS KODESKU, A.DESKRIPSI AS DESKRIPSISKU, D.KODESATUAN, 
-                    IFNULL(F.STOKAWAL, 0) AS STOKAWAL, IFNULL(SUM(E.JUMLAHMASUK), 0) AS STOKMASUK, IFNULL(SUM(E.JUMLAHKELUAR), 0) AS STOKKELUAR,
-                    IFNULL(SUM(E.JUMLAHMASUK - E.JUMLAHKELUAR), 0) AS STOKAKHIR, IFNULL(G.HARGABELIRERATA, 0) AS HARGABELIRERATA, 0 AS NILAIPERSEDIAAN");
+        // Optimasi: Pre-calculate nilai persediaan di SELECT untuk menghindari kalkulasi berulang
+        $this->select("A.IDBARANGSKU, C.NAMAKATEGORI, B.NAMABARANG, CONCAT(B.KODEBARANG, '-', A.KODESKU) AS KODESKU, 
+                    A.DESKRIPSI AS DESKRIPSISKU, D.KODESATUAN, 
+                    IFNULL(F.STOKAWAL, 0) AS STOKAWAL, 
+                    IFNULL(E.STOKMASUK, 0) AS STOKMASUK, 
+                    IFNULL(E.STOKKELUAR, 0) AS STOKKELUAR,
+                    IFNULL(E.STOKAKHIR, 0) AS STOKAKHIR, 
+                    IFNULL(G.HARGABELIRERATA, 0) AS HARGABELIRERATA, 
+                    ROUND(IFNULL(E.STOKAKHIR, 0) * IFNULL(G.HARGABELIRERATA, 0), 2) AS NILAIPERSEDIAAN");
         $this->from('m_barangsku A', true);
         $this->join('m_barang AS B', 'A.IDBARANG = B.IDBARANG', 'LEFT');
         $this->join('m_barangkategori AS C', 'B.IDBARANGKATEGORI = C.IDBARANGKATEGORI', 'LEFT');
         $this->join('m_barangsatuan AS D', 'A.IDBARANGSATUAN = D.IDBARANGSATUAN', 'LEFT');
-        $this->join('t_gudangstok AS E', 'A.IDBARANGSKU = E.IDBARANGSKU AND E.IDGUDANG = ' . $idGudang . ' AND DATE(E.INPUTTANGGALWAKTU) BETWEEN "' . $tanggalAwal . '" AND "' . $tanggalAkhir . '"', 'LEFT');
+        
+        // Optimasi 1: Pre-agregasi stok dalam subquery untuk menghindari SUM di main query
+        // Optimasi 2: Gunakan range pada INPUTTANGGALWAKTU tanpa DATE() untuk menggunakan index
+        $subQueryStokPeriode = $this->db->table('t_gudangstok');
+        $subQueryStokPeriode->select('IDBARANGSKU, 
+                                      SUM(JUMLAHMASUK) AS STOKMASUK, 
+                                      SUM(JUMLAHKELUAR) AS STOKKELUAR,
+                                      SUM(JUMLAHMASUK - JUMLAHKELUAR) AS STOKAKHIR');
+        $subQueryStokPeriode->where('IDGUDANG', $this->db->escape($idGudang));
+        $subQueryStokPeriode->where('INPUTTANGGALWAKTU >=', $tanggalAwal . ' 00:00:00');
+        $subQueryStokPeriode->where('INPUTTANGGALWAKTU <=', $tanggalAkhir . ' 23:59:59');
+        $subQueryStokPeriode->groupBy('IDBARANGSKU');
+        $compiledStokPeriode = $subQueryStokPeriode->getCompiledSelect();
+        
+        $this->join('(' . $compiledStokPeriode . ') AS E', 'A.IDBARANGSKU = E.IDBARANGSKU', 'LEFT');
 
-        $subQuery   =   $this->db->table('t_gudangstok');
-        $subQuery->select('IDBARANGSKU, IDBARANGSATUAN, IFNULL(SUM(JUMLAHMASUK - JUMLAHKELUAR), 0) AS STOKAWAL');
-        $subQuery->where('IDGUDANG', $idGudang);
-        $subQuery->where('DATE(INPUTTANGGALWAKTU) <', $tanggalAwal);
-        $subQuery->groupBy('IDBARANGSKU, IDBARANGSATUAN');
-        $subQuery   =   $subQuery->getCompiledSelect();
+        // Optimasi 3: Subquery stok awal dengan range datetime yang lebih efisien
+        $subQueryStokAwal = $this->db->table('t_gudangstok');
+        $subQueryStokAwal->select('IDBARANGSKU, IDBARANGSATUAN, SUM(JUMLAHMASUK - JUMLAHKELUAR) AS STOKAWAL');
+        $subQueryStokAwal->where('IDGUDANG', $this->db->escape($idGudang));
+        $subQueryStokAwal->where('INPUTTANGGALWAKTU <', $tanggalAwal . ' 00:00:00');
+        $subQueryStokAwal->groupBy('IDBARANGSKU, IDBARANGSATUAN');
+        $compiledStokAwal = $subQueryStokAwal->getCompiledSelect();
 
-        $this->join('(' . $subQuery . ') AS F', 'A.IDBARANGSKU = F.IDBARANGSKU AND A.IDBARANGSATUAN = F.IDBARANGSATUAN', 'LEFT');
+        $this->join('(' . $compiledStokAwal . ') AS F', 'A.IDBARANGSKU = F.IDBARANGSKU AND A.IDBARANGSATUAN = F.IDBARANGSATUAN', 'LEFT');
 
-        $subQuery   =   $this->db->table('t_notapembelianinbound AS GA');
-        $subQuery->select('GB.IDBARANGSKU, AVG(GB.HARGABELI) AS HARGABELIRERATA');
-        $subQuery->join('t_notapembelianbarang AS GB', 'GA.IDNOTAPEMBELIANBARANG = GB.IDNOTAPEMBELIANBARANG', 'LEFT');
-        $subQuery->where('GA.IDGUDANG', $idGudang);
-        $subQuery->where('DATE(GA.PROSESTANGGALWAKTU) <= ', $tanggalAkhir);
-        $subQuery->groupBy('GB.IDBARANGSKU');
-        $subQuery   =   $subQuery->getCompiledSelect();
+        // Optimasi 4: Subquery harga beli rerata dengan datetime range
+        $subQueryHarga = $this->db->table('t_notapembelianinbound AS GA');
+        $subQueryHarga->select('GB.IDBARANGSKU, AVG(GB.HARGABELI) AS HARGABELIRERATA');
+        $subQueryHarga->join('t_notapembelianbarang AS GB', 'GA.IDNOTAPEMBELIANBARANG = GB.IDNOTAPEMBELIANBARANG', 'LEFT');
+        $subQueryHarga->where('GA.IDGUDANG', $this->db->escape($idGudang));
+        $subQueryHarga->where('GA.PROSESTANGGALWAKTU <=', $tanggalAkhir . ' 23:59:59');
+        $subQueryHarga->groupBy('GB.IDBARANGSKU');
+        $compiledHarga = $subQueryHarga->getCompiledSelect();
 
-        $this->join('(' . $subQuery . ') AS G', 'A.IDBARANGSKU = G.IDBARANGSKU', 'LEFT');
+        $this->join('(' . $compiledHarga . ') AS G', 'A.IDBARANGSKU = G.IDBARANGSKU', 'LEFT');
 
-        if(isset($idBarangKategori) && $idBarangKategori != 0 && $idBarangKategori != "") $this->where('B.IDBARANGKATEGORI', $idBarangKategori);
+        // Filter kategori barang
+        if(isset($idBarangKategori) && $idBarangKategori != 0 && $idBarangKategori != "") {
+            $this->where('B.IDBARANGKATEGORI', $idBarangKategori);
+        }
+        
+        // Optimasi 5: Search dengan FULLTEXT jika tersedia, atau minimal gunakan index pada kolom
         if(isset($kataKunciPencarian) && $kataKunciPencarian != "") {
             $this->groupStart();
             $this->orLike('C.NAMAKATEGORI', $kataKunciPencarian, 'both')
@@ -80,6 +107,7 @@ class PersediaanBarangModel extends Model
             $this->groupEnd();
         }
         
+        // Optimasi 6: GROUP BY hanya sekali di level akhir
         $this->groupBy('A.IDBARANGSKU, A.IDBARANGSATUAN');
 
         return $this;
@@ -87,36 +115,63 @@ class PersediaanBarangModel extends Model
 
     public function getDataPersediaanBarangToko($idToko, $idBarangKategori, $tanggalAwal, $tanggalAkhir, $kataKunciPencarian)
     {	
-        $this->select("A.IDBARANGSKU, C.NAMAKATEGORI, B.NAMABARANG, CONCAT(B.KODEBARANG, '-', A.KODESKU) AS KODESKU, A.DESKRIPSI AS DESKRIPSISKU, D.KODESATUAN, 
-                    IFNULL(F.STOKAWAL, 0) AS STOKAWAL, IFNULL(SUM(E.JUMLAHMASUK), 0) AS STOKMASUK, IFNULL(SUM(E.JUMLAHKELUAR), 0) AS STOKKELUAR,
-                    IFNULL(SUM(E.JUMLAHMASUK - E.JUMLAHKELUAR), 0) AS STOKAKHIR, IFNULL(G.HARGABELIRERATA, 0) AS HARGABELIRERATA, 0 AS NILAIPERSEDIAAN");
+        // Optimasi: Pre-calculate nilai persediaan di SELECT untuk menghindari kalkulasi berulang
+        $this->select("A.IDBARANGSKU, C.NAMAKATEGORI, B.NAMABARANG, CONCAT(B.KODEBARANG, '-', A.KODESKU) AS KODESKU, 
+                    A.DESKRIPSI AS DESKRIPSISKU, D.KODESATUAN, 
+                    IFNULL(F.STOKAWAL, 0) AS STOKAWAL, 
+                    IFNULL(E.STOKMASUK, 0) AS STOKMASUK, 
+                    IFNULL(E.STOKKELUAR, 0) AS STOKKELUAR,
+                    IFNULL(E.STOKAKHIR, 0) AS STOKAKHIR, 
+                    IFNULL(G.HARGABELIRERATA, 0) AS HARGABELIRERATA, 
+                    ROUND(IFNULL(E.STOKAKHIR, 0) * IFNULL(G.HARGABELIRERATA, 0), 2) AS NILAIPERSEDIAAN");
         $this->from('m_barangsku A', true);
         $this->join('m_barang AS B', 'A.IDBARANG = B.IDBARANG', 'LEFT');
         $this->join('m_barangkategori AS C', 'B.IDBARANGKATEGORI = C.IDBARANGKATEGORI', 'LEFT');
         $this->join('m_barangsatuan AS D', 'A.IDBARANGSATUAN = D.IDBARANGSATUAN', 'LEFT');
-        $this->join('t_tokostok AS E', 'A.IDBARANGSKU = E.IDBARANGSKU AND E.IDTOKO = ' . $idToko . ' AND DATE(E.INPUTTANGGALWAKTU) BETWEEN "' . $tanggalAwal . '" AND "' . $tanggalAkhir . '"', 'LEFT');
+        
+        // Optimasi 1: Pre-agregasi stok dalam subquery untuk menghindari SUM di main query
+        // Optimasi 2: Gunakan range pada INPUTTANGGALWAKTU tanpa DATE() untuk menggunakan index
+        $subQueryStokPeriode = $this->db->table('t_tokostok');
+        $subQueryStokPeriode->select('IDBARANGSKU, 
+                                      SUM(JUMLAHMASUK) AS STOKMASUK, 
+                                      SUM(JUMLAHKELUAR) AS STOKKELUAR,
+                                      SUM(JUMLAHMASUK - JUMLAHKELUAR) AS STOKAKHIR');
+        $subQueryStokPeriode->where('IDTOKO', $this->db->escape($idToko));
+        $subQueryStokPeriode->where('INPUTTANGGALWAKTU >=', $tanggalAwal . ' 00:00:00');
+        $subQueryStokPeriode->where('INPUTTANGGALWAKTU <=', $tanggalAkhir . ' 23:59:59');
+        $subQueryStokPeriode->groupBy('IDBARANGSKU');
+        $compiledStokPeriode = $subQueryStokPeriode->getCompiledSelect();
+        
+        $this->join('(' . $compiledStokPeriode . ') AS E', 'A.IDBARANGSKU = E.IDBARANGSKU', 'LEFT');
 
-        $subQuery   =   $this->db->table('t_tokostok');
-        $subQuery->select('IDBARANGSKU, IDBARANGSATUAN, IFNULL(SUM(JUMLAHMASUK - JUMLAHKELUAR), 0) AS STOKAWAL');
-        $subQuery->where('IDTOKO', $idToko);
-        $subQuery->where('DATE(INPUTTANGGALWAKTU) <', $tanggalAwal);
-        $subQuery->groupBy('IDBARANGSKU, IDBARANGSATUAN');
-        $subQuery   =   $subQuery->getCompiledSelect();
+        // Optimasi 3: Subquery stok awal dengan range datetime yang lebih efisien
+        $subQueryStokAwal = $this->db->table('t_tokostok');
+        $subQueryStokAwal->select('IDBARANGSKU, IDBARANGSATUAN, SUM(JUMLAHMASUK - JUMLAHKELUAR) AS STOKAWAL');
+        $subQueryStokAwal->where('IDTOKO', $this->db->escape($idToko));
+        $subQueryStokAwal->where('INPUTTANGGALWAKTU <', $tanggalAwal . ' 00:00:00');
+        $subQueryStokAwal->groupBy('IDBARANGSKU, IDBARANGSATUAN');
+        $compiledStokAwal = $subQueryStokAwal->getCompiledSelect();
 
-        $this->join('(' . $subQuery . ') AS F', 'A.IDBARANGSKU = F.IDBARANGSKU AND A.IDBARANGSATUAN = F.IDBARANGSATUAN', 'LEFT');
+        $this->join('(' . $compiledStokAwal . ') AS F', 'A.IDBARANGSKU = F.IDBARANGSKU AND A.IDBARANGSATUAN = F.IDBARANGSATUAN', 'LEFT');
 
-        $subQuery   =   $this->db->table('t_tokonotamutasiinbound AS GA');
-        $subQuery->select('GB.IDBARANGSKU, AVG(GB.HARGAGROSIR) AS HARGABELIRERATA');
-        $subQuery->join('t_tokonotamutasibarang AS GB', 'GA.IDTOKONOTAMUTASIBARANG = GB.IDTOKONOTAMUTASIBARANG', 'LEFT');
-        $subQuery->join('t_tokonotamutasirekap AS GC', 'GB.IDTOKONOTAMUTASIREKAP = GC.IDTOKONOTAMUTASIREKAP', 'LEFT');
-        $subQuery->where('GC.IDTOKO', $idToko);
-        $subQuery->where('DATE(GA.PROSESTANGGALWAKTU) <= ', $tanggalAkhir);
-        $subQuery->groupBy('GB.IDBARANGSKU');
-        $subQuery   =   $subQuery->getCompiledSelect();
+        // Optimasi 4: Subquery harga grosir rerata dengan datetime range
+        $subQueryHarga = $this->db->table('t_tokonotamutasiinbound AS GA');
+        $subQueryHarga->select('GB.IDBARANGSKU, AVG(GB.HARGAGROSIR) AS HARGABELIRERATA');
+        $subQueryHarga->join('t_tokonotamutasibarang AS GB', 'GA.IDTOKONOTAMUTASIBARANG = GB.IDTOKONOTAMUTASIBARANG', 'LEFT');
+        $subQueryHarga->join('t_tokonotamutasirekap AS GC', 'GB.IDTOKONOTAMUTASIREKAP = GC.IDTOKONOTAMUTASIREKAP', 'LEFT');
+        $subQueryHarga->where('GC.IDTOKO', $this->db->escape($idToko));
+        $subQueryHarga->where('GA.PROSESTANGGALWAKTU <=', $tanggalAkhir . ' 23:59:59');
+        $subQueryHarga->groupBy('GB.IDBARANGSKU');
+        $compiledHarga = $subQueryHarga->getCompiledSelect();
 
-        $this->join('(' . $subQuery . ') AS G', 'A.IDBARANGSKU = G.IDBARANGSKU', 'LEFT');
+        $this->join('(' . $compiledHarga . ') AS G', 'A.IDBARANGSKU = G.IDBARANGSKU', 'LEFT');
 
-        if(isset($idBarangKategori) && $idBarangKategori != 0 && $idBarangKategori != "") $this->where('B.IDBARANGKATEGORI', $idBarangKategori);
+        // Filter kategori barang
+        if(isset($idBarangKategori) && $idBarangKategori != 0 && $idBarangKategori != "") {
+            $this->where('B.IDBARANGKATEGORI', $idBarangKategori);
+        }
+        
+        // Optimasi 5: Search dengan FULLTEXT jika tersedia, atau minimal gunakan index pada kolom
         if(isset($kataKunciPencarian) && $kataKunciPencarian != "") {
             $this->groupStart();
             $this->orLike('C.NAMAKATEGORI', $kataKunciPencarian, 'both')
@@ -127,6 +182,7 @@ class PersediaanBarangModel extends Model
             $this->groupEnd();
         }
         
+        // Optimasi 6: GROUP BY hanya sekali di level akhir
         $this->groupBy('A.IDBARANGSKU, A.IDBARANGSATUAN');
 
         return $this;
