@@ -58,7 +58,7 @@ class Access extends ResourceController
         $timeCreate             =   Time::now(APP_TIMEZONE)->toDateTimeString();
         $statusCode             =   401;
         $responseMsg            =   lang("Controllers.Access.check.enterUsernamePassword");
-        $captchaCode            =   generateRandomCharacter(4, 3);
+        $captchaCode            =   APP_IS_DEVELOPMENT ? 'AAAA' : generateRandomCharacter(4, 3);
         $idUserAdmin            =   0;
 
         $userDetails    =   [

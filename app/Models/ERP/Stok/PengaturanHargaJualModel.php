@@ -42,12 +42,15 @@ class PengaturanHargaJualModel extends Model
     public function getDataHargaJualBarang($idBarangKategori, $idBarangMerk, $searchKeyword)
     {	
         $this->select("A.IDBARANG, B.NAMAKATEGORI, C.NAMAMERK, CONCAT('[', IFNULL(A.KODEBARANG, '-'), '] ', A.NAMABARANG) AS NAMABARANG, COUNT(DISTINCT(D.IDBARANGSKU)) AS JUMLAHSKU,
-                    IFNULL(MAX(E.HARGA), 0) AS HARGATERTINGGI, IFNULL(MIN(E.HARGA), 0) AS HARGATERENDAH, '[]' AS ARRIDBARANGSATUAN");
+                IFNULL(GROUP_CONCAT(DISTINCT(FORMAT(E.HARGA, 0)) ORDER BY E.HARGA ASC SEPARATOR ' | '), '-') AS DAFTARHARGARETAIL,
+                IFNULL(GROUP_CONCAT(DISTINCT(FORMAT(F.HARGA, 0)) ORDER BY F.HARGA ASC SEPARATOR ' | '), '-') AS DAFTARHARGAGROSIR,
+                '[]' AS ARRIDBARANGSATUAN");
         $this->from('m_barang A', true);
         $this->join('m_barangkategori AS B', 'A.IDBARANGKATEGORI = B.IDBARANGKATEGORI', 'LEFT');
         $this->join('m_barangmerk AS C', 'A.IDBARANGMERK = C.IDBARANGMERK', 'LEFT');
         $this->join('m_barangsku AS D', 'A.IDBARANG = D.IDBARANG', 'LEFT');
         $this->join('t_baranghargajual AS E', 'A.IDBARANG = E.IDBARANG', 'LEFT');
+        $this->join('t_baranghargajualgrosir AS F', 'A.IDBARANG = F.IDBARANG', 'LEFT');
 
         if($idBarangKategori != 0) $this->where('A.IDBARANGKATEGORI', $idBarangKategori);
         if($idBarangMerk != 0) $this->where('A.IDBARANGMERK', $idBarangMerk);

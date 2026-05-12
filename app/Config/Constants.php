@@ -167,6 +167,7 @@ $arrYear    =	[
 if($last1Year > $minYear) $arrYear[]=    ["ID"=>$last1Year, "VALUE"=>$last1Year];
 if($last2Year > $minYear) $arrYear[]=    ["ID"=>$last2Year, "VALUE"=>$last2Year];
 
+defined('APP_IS_DEVELOPMENT')                           || define('APP_IS_DEVELOPMENT', $_ENV['CI_ENVIRONMENT'] == 'development' ? true : false);
 defined('APP_NAME')                                     || define('APP_NAME', $_ENV['APP_NAME'] ?: 'Roketo | ERP');
 defined('APP_NAME_FORMAL')                              || define('APP_NAME_FORMAL', $_ENV['APP_NAME_FORMAL'] ?: 'Roketo | Enterprise Resource Planning');
 defined('APP_TIMEZONE')                                 || define('APP_TIMEZONE', $_ENV['APP_TIMEZONE'] ?: 'Asia/Jakarta');
