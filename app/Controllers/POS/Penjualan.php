@@ -62,6 +62,7 @@ class Penjualan extends ResourceController
 
         $penjualanModel     =   new PenjualanModel();
         $mainOperation      =   new MainOperation();
+        $idToko             =   $this->idToko;
         $arrIdBarangKategori=   $this->request->getVar('arrIdBarangKategori');
         $arrIdBarangMerk    =   $this->request->getVar('arrIdBarangMerk');
         $searchKeyword      =   $this->request->getVar('searchKeyword');
@@ -83,7 +84,7 @@ class Penjualan extends ResourceController
             }
         }
 
-        $baseData           =   $penjualanModel->getListBarang($arrIdBarangKategori, $arrIdBarangMerk, $searchKeyword);
+        $baseData           =   $penjualanModel->getListBarang($idToko, $arrIdBarangKategori, $arrIdBarangMerk, $searchKeyword);
         $totalNumberData    =   $baseData->countAllResults(false);
 
         switch($sortCondition) {

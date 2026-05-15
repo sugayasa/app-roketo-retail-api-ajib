@@ -39,14 +39,14 @@ class PenjualanModel extends Model
     protected $beforeDelete   = [];
     protected $afterDelete    = [];
     
-    public function getListBarang($arrIdBarangKategori, $arrIdBarangMerk, $searchKeyword)
+    public function getListBarang($idToko, $arrIdBarangKategori, $arrIdBarangMerk, $searchKeyword)
     {	
         $this->select("A.IDBARANG, B.NAMAMERK, C.NAMAKATEGORI, A.NAMABARANG, A.KODEBARANG, IFNULL(MIN(D.HARGA), 0) AS HARGATERENDAH, IFNULL(MAX(D.HARGA), 0) AS HARGATERTINGGI,
                     0 AS TOTALSTOK, A.FOTOBARANG, A.DESKRIPSI");
         $this->from('m_barang A', true);
         $this->join('m_barangmerk AS B', 'A.IDBARANGMERK = B.IDBARANGMERK', 'LEFT');
         $this->join('m_barangkategori AS C', 'A.IDBARANGKATEGORI = C.IDBARANGKATEGORI', 'LEFT');
-        $this->join('t_baranghargajual AS D', 'A.IDBARANG = D.IDBARANG', 'LEFT');
+        $this->join('t_baranghargajual AS D', 'A.IDBARANG = D.IDBARANG AND D.IDTOKO = ' . $idToko, 'LEFT');
         $this->join('m_barangsku AS E', 'A.IDBARANG = E.IDBARANG', 'LEFT');
 
         if(isset($arrIdBarangKategori) && is_array($arrIdBarangKategori) && count($arrIdBarangKategori) > 0) {
