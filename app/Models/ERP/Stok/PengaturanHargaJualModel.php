@@ -77,10 +77,10 @@ class PengaturanHargaJualModel extends Model
 
         // Optimasi 4: SQL Injection protection dengan escape
         if($idBarangKategori != 0) {
-            $this->where('A.IDBARANGKATEGORI', $this->db->escape($idBarangKategori));
+            $this->where('A.IDBARANGKATEGORI', $idBarangKategori);
         }
         if($idBarangMerk != 0) {
-            $this->where('A.IDBARANGMERK', $this->db->escape($idBarangMerk));
+            $this->where('A.IDBARANGMERK', $idBarangMerk);
         }
         
         // Optimasi 5: Search dengan prepared statement
@@ -117,7 +117,7 @@ class PengaturanHargaJualModel extends Model
         $this->from('m_barang A', true);
         $this->join('m_barangkategori AS B', 'A.IDBARANGKATEGORI = B.IDBARANGKATEGORI', 'LEFT');
         $this->join('m_barangmerk AS C', 'A.IDBARANGMERK = C.IDBARANGMERK', 'LEFT');
-        $this->where('A.IDBARANG', $this->db->escape($idBarang));
+        $this->where('A.IDBARANG', $idBarang);
         $this->limit(1);
 
         $result =   $this->get()->getRowObject();
@@ -131,7 +131,7 @@ class PengaturanHargaJualModel extends Model
         // Tidak perlu GROUP BY karena IDBARANGSKU adalah unique per row
         $this->select("IDBARANGSKU, KODESKU, DESKRIPSI, '[]' AS ATRIBUTSKUSTR");
         $this->from('m_barangsku', true);
-        $this->where('IDBARANG', $this->db->escape($idBarang));
+        $this->where('IDBARANG', $idBarang);
         $this->orderBy('KODESKU');
 
         $result =   $this->get()->getResultObject();
@@ -145,7 +145,7 @@ class PengaturanHargaJualModel extends Model
         $this->select("DATE_FORMAT(B.INPUTTANGGALWAKTU, '%d %b %Y') AS TANGGAL, B.NOTAPEMBELIANNOMOR, A.HARGABELI");
         $this->from('t_notapembelianbarang AS A', true);
         $this->join('t_notapembelianrekap AS B', 'A.IDNOTAPEMBELIANREKAP = B.IDNOTAPEMBELIANREKAP', 'LEFT');
-        $this->where('A.IDBARANGSKU', $this->db->escape($idBarangSKU));
+        $this->where('A.IDBARANGSKU', $idBarangSKU);
         $this->orderBy('B.INPUTTANGGALWAKTU', 'DESC');
         $this->limit($limit); // Batasi hasil untuk performa
 
@@ -170,8 +170,8 @@ class PengaturanHargaJualModel extends Model
         // Optimasi: Subquery dengan proper escaping untuk SQL injection protection
         $subQueryHarga = $this->db->table('t_baranghargajualgrosir AS B');
         $subQueryHarga->select('B.IDKELOMPOKHARGAGROSIR, B.HARGA');
-        $subQueryHarga->where('B.IDBARANGSKU', $this->db->escape($idBarangSKU));
-        $subQueryHarga->where('B.IDBARANGSATUAN', $this->db->escape($idBarangSatuan));
+        $subQueryHarga->where('B.IDBARANGSKU', $idBarangSKU);
+        $subQueryHarga->where('B.IDBARANGSATUAN', $idBarangSatuan);
         $subQueryHarga->where('B.JUMLAHSATUAN', 1);
         $compiledHarga = $subQueryHarga->getCompiledSelect();
         
