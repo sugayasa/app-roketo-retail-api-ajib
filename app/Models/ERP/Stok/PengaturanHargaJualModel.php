@@ -156,13 +156,9 @@ class PengaturanHargaJualModel extends Model
 
     public function getDataHargaJualBarangPerSKU($idToko, $idBarang, $idBarangSatuan)
     {	
-        // Optimasi: SQL Injection protection dengan escape parameter
         $this->select("IDBARANGSKU, HARGA");
         $this->from('t_baranghargajual', true);
-        $this->where('IDTOKO', $this->db->escape($idToko));
-        $this->where('IDBARANG', $this->db->escape($idBarang));
-        $this->where('IDBARANGSATUAN', $this->db->escape($idBarangSatuan));
-        $this->where('JUMLAHSATUAN', 1);
+        $this->where('IDTOKO', $idToko)->where('IDBARANG', $idBarang)->where('IDBARANGSATUAN', $idBarangSatuan)->where('JUMLAHSATUAN', 1);
 
         $result =   $this->get()->getResultObject();
         if(is_null($result)) return [];
@@ -192,12 +188,9 @@ class PengaturanHargaJualModel extends Model
 
     public function isHargaBarangGrosirExist($idKelompokHargaGrosir, $idBarangSKU, $idBarangSatuan)
     {	
-        // Optimasi: SQL Injection protection dengan escape parameter
         $this->select("IDBARANGHARGAJUALGROSIR");
         $this->from('t_baranghargajualgrosir', true);
-        $this->where('IDKELOMPOKHARGAGROSIR', $this->db->escape($idKelompokHargaGrosir));
-        $this->where('IDBARANGSKU', $this->db->escape($idBarangSKU));
-        $this->where('IDBARANGSATUAN', $this->db->escape($idBarangSatuan));
+        $this->where('IDKELOMPOKHARGAGROSIR', $idKelompokHargaGrosir)->where('IDBARANGSKU', $idBarangSKU)->where('IDBARANGSATUAN', $idBarangSatuan)->where('JUMLAHSATUAN', 1);
         $this->where('JUMLAHSATUAN', 1);
         $this->limit(1);
 
