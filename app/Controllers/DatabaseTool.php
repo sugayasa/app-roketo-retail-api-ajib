@@ -12,21 +12,28 @@ class DatabaseTool extends BaseController
         try {
             $migrate = \Config\Services::migrations();
             $migrate->latest();
-            return "Migration executed successfully!";
+            echo "Migration executed successfully!";
+            exit();
         } catch (Exception $e) {
-            return "Internal error : " . $e->getMessage();
+            echo "Internal error : " . $e->getMessage();
+            exit();
         }
     }
 
     public function seed($name = null)
     {
-        if (is_null($name)) return "Please provide a seeder name.";
+        if (is_null($name)) {
+            echo "Please provide a seeder name.";
+            exit();
+        }
         try {
             $seeder = \Config\Database::seeder();
             $seeder->call($name);
-            return "Seeding [$name] executed successfully!";
+            echo "Seeding [$name] executed successfully!";
+            exit();
         } catch (Exception $e) {
-            return "Internal error : " . $e->getMessage();
+            echo "Internal error : " . $e->getMessage();
+            exit();
         }
     }
 
@@ -35,9 +42,11 @@ class DatabaseTool extends BaseController
         try {
             $migrate = \Config\Services::migrations();
             $migrate->regress(-1);
-            return "Rollback executed successfully!";
+            echo "Rollback executed successfully!";
+            exit();
         } catch (Exception $e) {
-            return "Internal error : " . $e->getMessage();
+            echo "Internal error : " . $e->getMessage();
+            exit();
         }
     }
 }

@@ -43,7 +43,7 @@ class StokToko extends ResourceController
     {
         $rules  =   [
             'idToko'            =>  ['label' => 'Id Toko', 'rules' => 'required|alpha_numeric'],
-            'idBarangKategori'  =>  ['label' => 'Kategori Barang', 'rules' => 'required|alpha_numeric'],
+            'idBarangKategori'  =>  ['label' => 'Kategori Barang', 'rules' => 'permit_empty|alpha_numeric'],
             'idBarangMerk'      =>  ['label' => 'Merk Barang', 'rules' => 'permit_empty|alpha_numeric'],
             'searchKeyword'     =>  ['label' => 'Kata Kunci Pencarian', 'rules' => 'permit_empty|alpha_numeric_punct'],
             'sortCondition'     =>  ['label' => 'Kondisi Urutan', 'rules' => 'permit_empty|in_list[stok_asc,stok_desc,penjualan_asc,penjualan_desc]']
