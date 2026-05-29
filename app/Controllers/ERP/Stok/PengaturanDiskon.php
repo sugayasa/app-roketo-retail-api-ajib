@@ -224,6 +224,73 @@ class PengaturanDiskon extends ResourceController
         ];
     }
 
+    public function getListDiskonEvent()
+    {
+        $rules  =   [
+            'tipeDiskon'        =>  ['label' => 'Tipe Diskon', 'rules' => 'permit_empty|in_list[1,2]'],
+            'levelDiskon'       =>  ['label' => 'Level Diskon', 'rules' => 'permit_empty|in_list[0,1]'],
+            'kataKunciPencarian'=>  ['label' => 'Kata Kunci Pencarian', 'rules' => 'permit_empty|alpha_numeric_punct'],
+            'dataPerPage'       =>  ['label' => 'Data Per Halaman', 'rules' => 'required|integer|greater_than[0]|less_than_equal_to[100]'],
+            'pageNumber'        =>  ['label' => 'Halaman', 'rules' => 'required|integer|greater_than[0]']
+        ];
+
+        $messages   =   [
+            'tipeDiskon'        =>  [
+                'in_list'       =>  'Tipe diskon tidak valid, silakan periksa kembali'
+            ],
+            'levelDiskon'       =>  [
+                'in_list'       =>  'Level diskon tidak valid, silakan periksa kembali'
+            ]
+        ];
+
+        if(!$this->validate($rules, $messages)) return $this->fail($this->validator->getErrors());
+
+        $mainOperation          =   new MainOperation();
+        $pengaturanDiskonModel  =   new PengaturanDiskonModel();
+        $tipeDiskon             =   $this->request->getVar('tipeDiskon');
+        $levelDiskon            =   $this->request->getVar('levelDiskon');
+        $kataKunciPencarian     =   $this->request->getVar('kataKunciPencarian');
+        $dataPerPage            =   $this->request->getVar('dataPerPage');
+        $pageNumber             =   $this->request->getVar('pageNumber');
+        $baseData               =   $pengaturanDiskonModel->getListDiskonEvent($tipeDiskon, $levelDiskon, $kataKunciPencarian);
+        $totalNumberData        =   $baseData->countAllResults(false);
+        $pageProperty           =   $mainOperation->generatePageProperty($pageNumber, $dataPerPage, $totalNumberData);
+
+        if($totalNumberData > 0) {
+            $listData       =   $baseData->asObject()->findAll($dataPerPage, ($pageNumber - 1) * $dataPerPage);
+            foreach($listData as $keyData){
+                $arrIdToko      =   isset($keyData->ARRIDTOKO) && $keyData->ARRIDTOKO != "" ? json_decode($keyData->ARRIDTOKO) : [];
+                $arrDataIdToko  =   [];
+                foreach($arrIdToko as $keyIdToko){
+                    $detailToko     =   $mainOperation->getDetailToko($keyIdToko);
+                    $idTokoEncode   =   $keyIdToko != "" ? hashidEncode($keyIdToko) : "";
+                    if($idTokoEncode != "") {
+                        $arrDataIdToko[]    =   [
+                            'IDTOKO'    =>  $idTokoEncode,
+                            'NAMATOKO'  =>  isset($detailToko['NAMA']) ? $detailToko['NAMA'] : ""
+                        ];
+                    }
+                }
+                $keyData->ARRIDTOKO     =   $arrDataIdToko;
+                $keyData->TIPEDISKON    =   intval($keyData->TIPEDISKON);
+                $keyData->JUMLAHDISKON  =   intval($keyData->JUMLAHDISKON);
+                $keyData->LEVELDISKON   =   intval($keyData->LEVELDISKON);
+            }
+
+            $listData   =   encodeDatabaseObjectResultKey($listData, ['IDDISKONEVENT']);
+            return $this->setResponseFormat('json')->respond([
+                "listData"      =>  $listData,
+                "pageProperty"  =>  $pageProperty
+            ]);
+        } else {
+            $dataReturn     =   [
+                "listData"      =>  [],
+                "pageProperty"  =>  $pageProperty
+            ];
+            return throwResponseNotFound('Tidak ada data diskon event yang ditemukan', $dataReturn);
+        }
+    }
+
     public function getListDiskonGrosir()
     {
         $rules  =   [

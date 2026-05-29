@@ -114,6 +114,28 @@ class PengaturanDiskonModel extends Model
         return false;
 	}
 
+    public function getListDiskonEvent($tipeDiskon, $levelDiskon, $kataKunciPencarian)
+    {	
+        $this->select("NAMAEVENT, IF(TIPEDISKON = 1, 'Persentase', 'Nominal') AS TIPEDISKONSTR, TIPEDISKON, JUMLAHDISKON, 
+                    IF(ISDISKONPERITEM = 1, 'Per Item', 'Per Nota') AS LEVELDISKONSTR, ISDISKONPERITEM AS LEVELDISKON,
+                    DESKRIPSI AS DESKRIPSIDISKON, DATE_FORMAT(TANGGALBERLAKUAWAL, '%d %b %Y') AS TANGGALBERLAKUAWALSTR, TANGGALBERLAKUAWAL,
+                    DATE_FORMAT(TANGGALBERLAKUAKHIR, '%d %b %Y') AS TANGGALBERLAKUAKHIRSTR, TANGGALBERLAKUAKHIR, ARRIDTOKO,
+                    INPUTUSER, DATE_FORMAT(INPUTTANGGALWAKTU, '%d %b %Y') AS INPUTTANGGALWAKTUSTR, IDDISKONEVENT");
+        $this->from('t_diskonevent', true);
+        if(isset($tipeDiskon) && $tipeDiskon != 0 && $tipeDiskon != '') $this->where('TIPEDISKON', $tipeDiskon);
+        if(isset($levelDiskon) && $levelDiskon != '') $this->where('ISDISKONPERITEM', $levelDiskon);
+        if(isset($kataKunciPencarian) && !is_null($kataKunciPencarian)){
+            $this->groupStart();
+            $this->like('NAMAEVENT', $kataKunciPencarian, 'both')
+            ->orLike('DESKRIPSI', $kataKunciPencarian, 'both');
+            $this->groupEnd();
+        }
+
+        $this->orderBy('TANGGALBERLAKUAWAL DESC, NAMAEVENT, TIPEDISKON');
+
+        return $this;
+	}
+
     public function getListDiskonGrosir($idBarangKategori, $idBarangMerk, $tipeDiskon, $statusBerlaku, $kataKunciPencarian)
     {	
         $this->select("CONCAT('[', D.NAMAKATEGORI, '] [', E.NAMAMERK, '] ', C.NAMABARANG) AS NAMABARANG, B.KODESKU, F.NAMASATUAN, B.DESKRIPSI AS DESKRIPSISKU,

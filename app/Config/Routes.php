@@ -164,6 +164,11 @@ $routes->group('erp', ['filter' => 'auth:mustBeLoggedIn'], function($routes) {
                 $routes->post('getListDiskonRetail', $functionRoute.'::getListDiskonRetail');
                 $routes->post('saveDataDiskonRetail', $functionRoute.'::saveDataDiskonRetail');
             });
+            $routes->group('event', function($routes) {
+                $functionRoute  =   'ERP\Stok\PengaturanDiskon';
+                $routes->post('getListDiskonEvent', $functionRoute.'::getListDiskonEvent');
+                $routes->post('saveDataDiskonEvent', $functionRoute.'::saveDataDiskonEvent');
+            });
             $routes->group('grosir', function($routes) {
                 $functionRoute  =   'ERP\Stok\PengaturanDiskon';
                 $routes->post('getListDiskonGrosir', $functionRoute.'::getListDiskonGrosir');
