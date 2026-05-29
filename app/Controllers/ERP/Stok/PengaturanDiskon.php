@@ -117,7 +117,9 @@ class PengaturanDiskon extends ResourceController
     {
         $idDiskonRetail =   $this->request->getVar('idDiskonRetail');
         $idDiskonRetail =   $idDiskonRetail != "" ? hashidDecode($idDiskonRetail) : 0;
-        $idDiskonRetail == 0 ? $this->parametersValidatorRetail() : $this->parametersValidatorRetail(true);
+        $validation     =   $idDiskonRetail == 0 ? $this->parametersValidatorRetail() : $this->parametersValidatorRetail(true);
+        
+        if($validation !== true) return $this->fail($validation);
 
         $idBarangSKU    =   $this->request->getVar('idBarangSKU');
         $idBarangSatuan =   $this->request->getVar('idBarangSatuan');
@@ -132,7 +134,9 @@ class PengaturanDiskon extends ResourceController
         $mainOperation          =   new MainOperation();
         $statusDiskon           =   strtotime($tanggalBatas) > strtotime($this->currentDateTime) ? 1 : -1;
         $arrDataInsertUpdate    =   $this->generateArrayInsertUpdateRetail($statusDiskon);
-        $procInsertUpdateData   =   $idDiskonRetail == 0 ? $mainOperation->insertDataTable('t_diskonretail', $arrDataInsertUpdate) : $mainOperation->updateDataTable('t_diskonretail', $arrDataInsertUpdate, ['IDDISKONRETAIL' => $idDiskonRetail]);
+        $procInsertUpdateData   =   $idDiskonRetail == 0 ?
+                                    $mainOperation->insertDataTable('t_diskonretail', $arrDataInsertUpdate) :
+                                    $mainOperation->updateDataTable('t_diskonretail', $arrDataInsertUpdate, ['IDDISKONRETAIL' => $idDiskonRetail]);
 
         if(!$procInsertUpdateData['status']) return switchMySQLErrorCode($procInsertUpdateData['errCode']);
         return throwResponseOK(
@@ -174,7 +178,7 @@ class PengaturanDiskon extends ResourceController
             $messages['idDiskonRetail']['alpha_numeric']  =   'Data kiriman tidak lengkap, silakan periksa kembali';
         }
 
-        if(!$this->validate($rules, $messages)) return $this->fail($this->validator->getErrors());
+        if(!$this->validate($rules, $messages)) return $this->validator->getErrors();
 
         $tipeDiskon     =   $this->request->getVar('tipeDiskon');
         $jumlahDiskon   =   $this->request->getVar('jumlahDiskon');
@@ -185,8 +189,9 @@ class PengaturanDiskon extends ResourceController
             case 2:
                 if($jumlahDiskon < 1000) return throwResponseNotAcceptable('Jumlah diskon nominal harus lebih besar dari 1.000 rupiah'); break;
             default:
-                return true;
+                break;
         }
+        return true;
     }
     
     private function isDataDiskonRetailValid($arrCheckData, $idDiskonRetail = 0)
@@ -291,6 +296,105 @@ class PengaturanDiskon extends ResourceController
         }
     }
 
+    public function saveDataDiskonEvent()
+    {
+        $idDiskonEvent  =   $this->request->getVar('idDiskonEvent');
+        $idDiskonEvent  =   $idDiskonEvent != "" ? hashidDecode($idDiskonEvent) : 0;
+        $validation     =   $idDiskonEvent == 0 ? $this->parametersValidatorEvent() : $this->parametersValidatorEvent(true);
+
+        if($validation !== true) return $this->fail($validation);
+
+        $mainOperation          =   new MainOperation();
+        $arrDataInsertUpdate    =   $this->generateArrayInsertUpdateEvent();
+        $procInsertUpdateData   =   $idDiskonEvent == 0 ?
+                                    $mainOperation->insertDataTable('t_diskonevent', $arrDataInsertUpdate) :
+                                    $mainOperation->updateDataTable('t_diskonevent', $arrDataInsertUpdate, ['IDDISKONEVENT' => $idDiskonEvent]);
+
+        if(!$procInsertUpdateData['status']) return switchMySQLErrorCode($procInsertUpdateData['errCode']);
+        return throwResponseOK(
+            $idDiskonEvent == 0 ? 'Data diskon event baru telah disimpan' : 'Data diskon event telah diperbarui'
+        );
+    }
+
+    private function parametersValidatorEvent($isUpdate = false)
+    {
+        $rules  =   [
+            'arrIdTokoBerlaku'  =>  ['label' => 'Daftar Toko Berlaku', 'rules' => 'required|is_array'],
+            'namaEvent'         =>  ['label' => 'Nama Event', 'rules' => 'required|alpha_numeric_punct|min_length[8]|max_length[100]'],
+            'deskripsi'         =>  ['label' => 'Deskripsi', 'rules' => 'required|alpha_numeric_punct|min_length[8]|max_length[255]'],
+            'tipeDiskon'        =>  ['label' => 'Tipe Diskon', 'rules' => 'required|in_list[1,2]'],
+            'jumlahDiskon'      =>  ['label' => 'Jumlah Diskon', 'rules' => 'required|integer|greater_than[0]'],
+            'tanggalAwal'       =>  ['label' => 'Tanggal Awal', 'rules' => 'required|valid_date|regex_match[/^\d{4}-\d{2}-\d{2}$/]'],
+            'tanggalAkhir'      =>  ['label' => 'Tanggal Akhir', 'rules' => 'required|valid_date|regex_match[/^\d{4}-\d{2}-\d{2}$/]'],
+            'levelDiskon'       =>  ['label' => 'Level Diskon', 'rules' => 'required|in_list[0,1]'],
+        ];
+
+        $messages   =   [
+            'arrIdTokoBerlaku'  => [
+                'is_array'  => 'Daftar toko berlaku tidak valid, silakan periksa kembali'
+            ],
+            'tipeDiskon'    => [
+                'in_list'   => 'Data kiriman [Tipe Diskon] tidak valid, silakan periksa kembali'
+            ],
+            'levelDiskon'   => [
+                'in_list'   => 'Data kiriman [Level Diskon] tidak valid, silakan periksa kembali'
+            ],
+            'tanggalAwal'   => [
+                'regex_match'   => 'Data kiriman [Tanggal Awal Berlaku] tidak valid, format tidak sesuai'
+            ],
+            'tanggalAkhir'  => [
+                'regex_match'   => 'Data kiriman [Tanggal Akhir Berlaku] tidak valid, format tidak sesuai'
+            ],
+        ];
+
+        if($isUpdate) {
+            $rules['idDiskonEvent']['rules']             =   'required|alpha_numeric';
+            $messages['idDiskonEvent']['required']       =   'Data kiriman tidak lengkap, silakan periksa kembali';
+            $messages['idDiskonEvent']['alpha_numeric']  =   'Data kiriman tidak lengkap, silakan periksa kembali';
+        }
+
+        if(!$this->validate($rules, $messages)) return $this->validator->getErrors();
+
+        $tipeDiskon     =   $this->request->getVar('tipeDiskon');
+        $jumlahDiskon   =   $this->request->getVar('jumlahDiskon');
+
+        switch($tipeDiskon){
+            case 1:
+                if($jumlahDiskon > 100) return throwResponseNotAcceptable('Jumlah diskon persentase harus di antara 1 sampai dengan 100'); break;
+            case 2:
+                if($jumlahDiskon < 1000) return throwResponseNotAcceptable('Jumlah diskon nominal harus lebih besar dari 1.000 rupiah'); break;
+            default:
+                break;
+        }
+        return true;
+    }
+
+    private function generateArrayInsertUpdateEvent(): array
+    {
+        $arrIdTokoBerlaku   =   $this->request->getVar('arrIdTokoBerlaku');
+        $arrIdTokoBerlaku   =   $this->getJsonDataArrIdTokoBerlaku($arrIdTokoBerlaku);
+        $namaEvent          =   $this->request->getVar('namaEvent');
+        $deskripsi          =   $this->request->getVar('deskripsi');
+        $tipeDiskon         =   $this->request->getVar('tipeDiskon');
+        $jumlahDiskon       =   $this->request->getVar('jumlahDiskon');
+        $tanggalAwal        =   $this->request->getVar('tanggalAwal');
+        $tanggalAkhir       =   $this->request->getVar('tanggalAkhir');
+        $levelDiskon        =   $this->request->getVar('levelDiskon');
+
+        return [
+            'ARRIDTOKO'             =>  $arrIdTokoBerlaku,
+            'NAMAEVENT'             =>  $namaEvent,
+            'DESKRIPSI'             =>  $deskripsi,
+            'TIPEDISKON'            =>  $tipeDiskon,
+            'JUMLAHDISKON'          =>  $jumlahDiskon,
+            'TANGGALBERLAKUAWAL'    =>  $tanggalAwal,
+            'TANGGALBERLAKUAKHIR'   =>  $tanggalAkhir,
+            'ISDISKONPERITEM'       =>  $levelDiskon,
+            'INPUTUSER'             =>  $this->userData->name.' ('.$this->userData->userLevelName.')',
+            'INPUTTANGGALWAKTU'     =>  $this->currentDateTime,
+        ];
+    }
+
     public function getListDiskonGrosir()
     {
         $rules  =   [
@@ -387,7 +491,9 @@ class PengaturanDiskon extends ResourceController
     {
         $idDiskonGrosir =   $this->request->getVar('idDiskonGrosir');
         $idDiskonGrosir =   $idDiskonGrosir != "" ? hashidDecode($idDiskonGrosir) : 0;
-        $idDiskonGrosir == 0 ? $this->parametersValidatorGrosir() : $this->parametersValidatorGrosir(true);
+        $validation     =   $idDiskonGrosir == 0 ? $this->parametersValidatorGrosir() : $this->parametersValidatorGrosir(true);
+
+        if($validation !== true) return $this->fail($validation);
 
         $idBarangSKU        =   $this->request->getVar('idBarangSKU');
         $idBarangSatuan     =   $this->request->getVar('idBarangSatuan');
@@ -418,8 +524,8 @@ class PengaturanDiskon extends ResourceController
         $rules  =   [
             'idBarangSKU'       =>  ['label' => 'Id Barang SKU', 'rules' => 'required|alpha_numeric'],
             'idBarangSatuan'    =>  ['label' => 'Id Barang Satuan', 'rules' => 'required|alpha_numeric'],
-            'arrIdTokoBerlaku'  =>  ['label' => 'Daftar Toko Berlaku', 'rules' => 'permit_empty|'],
-            'tipeDiskon'        =>  ['label' => 'Tipe Diskon', 'rules' => 'permit_empty|in_list[1,2]'],
+            'arrIdTokoBerlaku'  =>  ['label' => 'Daftar Toko Berlaku', 'rules' => 'required|is_array'],
+            'tipeDiskon'        =>  ['label' => 'Tipe Diskon', 'rules' => 'required|in_list[1,2]'],
             'jumlahDiskon'      =>  ['label' => 'Jumlah Diskon', 'rules' => 'required|integer|greater_than[0]'],
             'deskripsi'         =>  ['label' => 'Deskripsi', 'rules' => 'required|alpha_numeric_punct|min_length[8]|max_length[150]'],
             'minimalItem'       =>  ['label' => 'Minimal Item', 'rules' => 'required|integer|greater_than[0]|less_than[999]'],
@@ -452,7 +558,7 @@ class PengaturanDiskon extends ResourceController
             $messages['idDiskonGrosir']['alpha_numeric']  =   'Data kiriman tidak lengkap, silakan periksa kembali';
         }
 
-        if(!$this->validate($rules, $messages)) return $this->fail($this->validator->getErrors());
+        if(!$this->validate($rules, $messages)) return $this->validator->getErrors();
 
         $tipeDiskon     =   $this->request->getVar('tipeDiskon');
         $jumlahDiskon   =   $this->request->getVar('jumlahDiskon');
@@ -463,8 +569,9 @@ class PengaturanDiskon extends ResourceController
             case 2:
                 if($jumlahDiskon < 1000) return throwResponseNotAcceptable('Jumlah diskon nominal harus lebih besar dari 1.000 rupiah'); break;
             default:
-                return true;
+                break;
         }
+        return true;
     }
     
     private function isDataDiskonGrosirValid($arrCheckData, $idDiskonGrosir = 0)
