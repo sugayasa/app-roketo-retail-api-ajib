@@ -179,6 +179,48 @@ class PengaturanHargaJual extends ResourceController
         return $harga;
     }
 
+    public function getUrlExcelHargaJualByFilter()
+    {
+        $rules  =   [
+            'idToko'            =>  ['label' => 'Id Toko', 'rules' => 'required|alpha_numeric'],
+            'idBarangKategori'  =>  ['label' => 'Id Kategori', 'rules' => 'permit_empty|alpha_numeric'],
+            'idBarangMerk'      =>  ['label' => 'Id Merk', 'rules' => 'permit_empty|alpha_numeric'],
+        ];
+
+        $messages   =   [
+            'idToko'  =>  [
+                'required'      =>  'Harap pilih toko terlebih dahulu',
+                'alpha_numeric' =>  'Toko yang dipilih tidak valid, silakan periksa kembali'
+            ],
+            'idBarangKategori'  =>  [
+                'alpha_numeric' =>  'Data kategori tidak valid, silakan periksa kembali'
+            ],
+            'idBarangMerk'      =>  [
+                'alpha_numeric' =>  'Data merk tidak valid, silakan periksa kembali'
+            ]
+        ];
+
+        if(!$this->validate($rules, $messages)) return $this->fail($this->validator->getErrors());
+
+        $idToko             =   $this->request->getVar('idToko');
+        $idToko             =   isset($idToko) && $idToko != "" ? hashidDecode($idToko) : 0;
+        $idBarangKategori   =   $this->request->getVar('idBarangKategori');
+        $idBarangKategori   =   isset($idBarangKategori) && $idBarangKategori != "" ? hashidDecode($idBarangKategori) : 0;
+        $idBarangMerk       =   $this->request->getVar('idBarangMerk');
+        $idBarangMerk       =   isset($idBarangMerk) && $idBarangMerk != "" ? hashidDecode($idBarangMerk) : 0;
+        $arrParameters      =   [
+            'idToko'            =>  $idToko,
+            'idBarangKategori'  =>  $idBarangKategori,
+            'idBarangMerk'      =>  $idBarangMerk
+        ];
+        $arrParametersEncode        =   encodeJWTToken($arrParameters);
+        $urlExcelHargaJualRetail    =   base_url(URL_EXCEL_ERP_DATA_HARGA_BARANG_RETAIL).$arrParametersEncode;
+
+        return $this->setResponseFormat('json')->respond([
+            "urlExcel"      =>  $urlExcelHargaJualRetail
+        ]);
+    }
+
     public function getDetailHargaJualGrosir()
     {
         $rules  =   [

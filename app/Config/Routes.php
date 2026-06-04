@@ -153,6 +153,7 @@ $routes->group('erp', ['filter' => 'auth:mustBeLoggedIn'], function($routes) {
             $functionRoute  =   'ERP\Stok\PengaturanHargaJual';
             $routes->post('getListBarang', $functionRoute.'::getListBarang');
             $routes->post('getDetailHargaJual', $functionRoute.'::getDetailHargaJual');
+            $routes->post('getUrlExcelHargaJualByFilter', $functionRoute.'::getUrlExcelHargaJualByFilter');
             $routes->post('getDetailHargaJualGrosir', $functionRoute.'::getDetailHargaJualGrosir');
             $routes->post('saveDetailHargaJual', $functionRoute.'::saveDetailHargaJual');
             $routes->post('saveDetailHargaJualGrosir', $functionRoute.'::saveDetailHargaJualGrosir');
@@ -413,6 +414,10 @@ $routes->group('erp', [], function($routes) {
             $functionRoute =   'ERP\Stok\StokBarang';
             $routes->get('excelDataStokGudang/(:any)', $functionRoute.'::excelDataStokGudang/$1');
             $routes->get('excelDataStokToko/(:any)', $functionRoute.'::excelDataStokToko/$1');
+        });
+        $routes->group('pengaturanHargaJual', function($routes) {
+            $functionRoute =   'ERP\Stok\PengaturanHargaJual';
+            $routes->get('excelDataHargaJualRetail/(:any)', $functionRoute.'::excelDataHargaJualRetail/$1');
         });
     });
 
