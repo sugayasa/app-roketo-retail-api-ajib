@@ -11,6 +11,8 @@ use App\Models\ERP\Stok\PengaturanHargaJualModel;
 use App\Models\ERP\Master\BarangSKUModel;
 use App\Models\ERP\Master\TokoModel;
 use App\Models\MainOperation;
+use App\Libraries\SpreadsheetGenerator;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
 
 class PengaturanHargaJual extends ResourceController
 {
@@ -183,7 +185,7 @@ class PengaturanHargaJual extends ResourceController
     {
         $rules  =   [
             'tipeHargaJual'     =>  ['label' => 'Tipe Harga Jual', 'rules' => 'required|in_list[R,G]'],
-            'idToko'            =>  ['label' => 'Id Toko', 'rules' => 'required|alpha_numeric'],
+            'idToko'            =>  ['label' => 'Id Toko', 'rules' => 'alpha_numeric'],
             'idBarangKategori'  =>  ['label' => 'Id Kategori', 'rules' => 'permit_empty|alpha_numeric'],
             'idBarangMerk'      =>  ['label' => 'Id Merk', 'rules' => 'permit_empty|alpha_numeric'],
         ];
@@ -194,7 +196,6 @@ class PengaturanHargaJual extends ResourceController
                 'in_list'       =>  'Tipe harga jual tidak valid, silakan periksa kembali'
             ],
             'idToko'  =>  [
-                'required'      =>  'Harap pilih toko terlebih dahulu',
                 'alpha_numeric' =>  'Toko yang dipilih tidak valid, silakan periksa kembali'
             ],
             'idBarangKategori'  =>  [
@@ -205,9 +206,17 @@ class PengaturanHargaJual extends ResourceController
             ]
         ];
 
+        $tipeHargaJual      =   $this->request->getVar('tipeHargaJual');
+        switch($tipeHargaJual){
+            case 'R'    :   $rules['idToko']['rules']       =   $rules['idToko']['rules'].'|required';
+                            $messages['idToko']['required'] =   'Toko harus dipilih untuk tipe harga jual retail';
+                            break;
+            case 'G'    :   
+            default     :   $rules['idToko']['rules']       =   $rules['idToko']['rules'].'|permit_empty'; break;
+        }
+
         if(!$this->validate($rules, $messages)) return $this->fail($this->validator->getErrors());
 
-        $tipeHargaJual      =   $this->request->getVar('tipeHargaJual');
         $idToko             =   $this->request->getVar('idToko');
         $idToko             =   isset($idToko) && $idToko != "" ? hashidDecode($idToko) : 0;
         $idBarangKategori   =   $this->request->getVar('idBarangKategori');
@@ -280,6 +289,199 @@ class PengaturanHargaJual extends ResourceController
                         'dataDetailBarang'          =>  $dataDetailBarang,
                         'dataDetailBarangSKU'       =>  $dataDetailBarangSKU
                     ]);
+    }
+
+    public function excelDataHargaJualRetail($arrParametersEncode = null)
+    {
+        if(!isset($arrParametersEncode) || $arrParametersEncode == "") return $this->failForbidden('[E-AUTH-000] Forbidden Access');
+
+        try {
+            helper(['firebaseJWT']);
+            $arrParameters              =   (array) decodeJWTToken($arrParametersEncode);
+            $mainOperation              =   new MainOperation();
+            $pengaturanHargaJualModel   =   new PengaturanHargaJualModel();
+
+            $idToko             =   $arrParameters['idToko'];
+            $idBarangKategori   =   $arrParameters['idBarangKategori'];
+            $idBarangMerk       =   $arrParameters['idBarangMerk'];
+            $baseData           =   $pengaturanHargaJualModel->getDaftarHargaJualRetail($idToko, $idBarangKategori, $idBarangMerk);
+            $dataLaporan        =   $baseData->asObject()->findAll(99999, 0);
+
+            $spreadsheet            =   new Spreadsheet();
+            $spreadsheetGenerator   =   new SpreadsheetGenerator();
+            $activeWorksheet        =   $spreadsheet->getActiveSheet();
+
+            $arrTitleData   =   ['Laporan Data Harga Jual Barang Retail'];
+            $arrFilterData  =   [
+                ['Toko', $mainOperation->getDetailToko($idToko)['NAMA']],
+                ['Kategori Barang', $mainOperation->getDetailBarangKategori($idBarangKategori)['NAMAKATEGORI']],
+                ['Merk', $mainOperation->getDetailBarangMerk($idBarangMerk)['NAMAMERK']],
+                ['Waktu Proses', date('d M Y H:i')]
+            ];
+
+            $arrHeaderData  =   [
+                [['A'], 1, 'Kategori Barang', 20, 'center'],
+                [['B'], 1, 'Merk', 16, 'center'],
+                [['C'], 1, 'Nama Barang', 35, 'center'],
+                [['D'], 1, 'Kode SKU', 18, 'center'],
+                [['E'], 1, 'Deskripsi SKU', 40, 'center'],
+                [['F'], 1, 'Detail Atribut', 45, 'center'],
+                [['G'], 1, 'Satuan', 12, 'center'],
+                [['H'], 1, 'Harga Modal', 12, 'right'],
+                [['I'], 1, 'Harga Jual', 12, 'right']
+            ];
+
+            $rowStartDocument           =   1;
+            $documentProperties         =   $spreadsheetGenerator->getDocumentProperties($rowStartDocument, $arrTitleData, $arrFilterData, $arrHeaderData);
+            $rowStartFilter             =   $documentProperties['rowStartFilter'];
+            $rowStartTableHeader        =   $documentProperties['rowStartTableHeader'];
+            $rowNumberTableContent      =   $documentProperties['rowNumberTableContent'];
+            $rowFirstTable              =   $documentProperties['rowFirstTable'];
+            $columnFirstTable           =   $arrHeaderData[0][0][0];
+            $columnLastTable            =   end(end($arrHeaderData)[0]);
+
+            $spreadsheetGenerator->setDocumentTitle($activeWorksheet, $arrTitleData, $columnFirstTable, $columnLastTable, $rowStartDocument);
+            $spreadsheetGenerator->setDocumentFilter($activeWorksheet, $arrFilterData, $columnLastTable, $rowStartFilter);
+            $spreadsheetGenerator->setDocumentTableHeader($activeWorksheet, $arrHeaderData, $rowStartTableHeader);
+
+            if(isset($dataLaporan) && !empty($dataLaporan)){
+                $barangSKUModel =   new BarangSKUModel();
+                foreach($dataLaporan as $keyDataLaporan){
+                    $idBarangSKU=   isset($keyDataLaporan->IDBARANGSKU) && $keyDataLaporan->IDBARANGSKU != "" ? $keyDataLaporan->IDBARANGSKU : 0;
+                    $atributSKU =   $barangSKUModel->getArrAtributSKU($idBarangSKU);
+                    $atributSKU =   isset($atributSKU) && !empty($atributSKU) ? implode(',', $atributSKU) : '-';
+
+                    $activeWorksheet
+                    ->setCellValue('A'.$rowNumberTableContent, $keyDataLaporan->NAMAKATEGORI)
+                    ->setCellValue('B'.$rowNumberTableContent, $keyDataLaporan->NAMAMERK)
+                    ->setCellValue('C'.$rowNumberTableContent, $keyDataLaporan->NAMABARANG)
+                    ->setCellValue('D'.$rowNumberTableContent, $keyDataLaporan->KODEBARANG.'-'.$keyDataLaporan->KODESKU)
+                    ->setCellValue('E'.$rowNumberTableContent, $keyDataLaporan->DESKRIPSISKU)
+                    ->setCellValue('F'.$rowNumberTableContent, $atributSKU)
+                    ->setCellValue('G'.$rowNumberTableContent, $keyDataLaporan->NAMASATUAN)
+                    ->setCellValue('H'.$rowNumberTableContent, intval($keyDataLaporan->STOK))
+                    ->setCellValue('I'.$rowNumberTableContent, intval($keyDataLaporan->HARGABELIRERATA));
+                    $rowNumberTableContent++;
+                }
+            } else {
+                $activeWorksheet->setCellValue($columnFirstTable.$rowNumberTableContent, 'Tidak ada data stok barang yang ditemukan');
+                $activeWorksheet->mergeCells($columnFirstTable.$rowNumberTableContent.':'.$columnLastTable.$rowNumberTableContent);
+            }
+		
+            $spreadsheetGenerator->setDocumentTableStyle($activeWorksheet, $columnFirstTable, $columnLastTable, $rowFirstTable, $rowNumberTableContent);
+            $spreadsheetGenerator->writeDocumentOutput($spreadsheet, 'Laporan_Stok_Barang_Toko');
+        } catch (\Throwable $th) {
+            return throwResponseInternalServerError('[E-AUTH-001] Internal server error', [$th]);
+        }
+    }
+
+    public function excelDataHargaJualGrosir($arrParametersEncode = null)
+    {
+        if(!isset($arrParametersEncode) || $arrParametersEncode == "") return $this->failForbidden('[E-AUTH-000] Forbidden Access');
+
+        try {
+            helper(['firebaseJWT']);
+            $arrParameters              =   (array) decodeJWTToken($arrParametersEncode);
+            $mainOperation              =   new MainOperation();
+            $pengaturanHargaJualModel   =   new PengaturanHargaJualModel();
+
+            $idBarangKategori   =   $arrParameters['idBarangKategori'];
+            $idBarangMerk       =   $arrParameters['idBarangMerk'];
+            $baseData           =   $pengaturanHargaJualModel->getDaftarHargaJualGrosir($idBarangKategori, $idBarangMerk);
+            $dataLaporan        =   $baseData->asObject()->findAll(99999, 0);
+            
+            // Get kelompok harga grosir
+            $dataKelompokHargaGrosir    =   $pengaturanHargaJualModel->getDataKelompokHargaGrosir();
+
+            $spreadsheet            =   new Spreadsheet();
+            $spreadsheetGenerator   =   new SpreadsheetGenerator();
+            $activeWorksheet        =   $spreadsheet->getActiveSheet();
+
+            $arrTitleData   =   ['Laporan Data Harga Jual Barang Grosir'];
+            $arrFilterData  =   [
+                ['Kategori Barang', $mainOperation->getDetailBarangKategori($idBarangKategori)['NAMAKATEGORI']],
+                ['Merk', $mainOperation->getDetailBarangMerk($idBarangMerk)['NAMAMERK']],
+                ['Waktu Proses', date('d M Y H:i')]
+            ];
+
+            // Build dynamic header based on kelompok harga grosir
+            $arrHeaderData  =   [
+                [['A'], 1, 'Kategori Barang', 20, 'center'],
+                [['B'], 1, 'Merk', 16, 'center'],
+                [['C'], 1, 'Nama Barang', 35, 'center'],
+                [['D'], 1, 'Kode SKU', 18, 'center'],
+                [['E'], 1, 'Deskripsi SKU', 40, 'center'],
+                [['F'], 1, 'Detail Atribut', 45, 'center'],
+                [['G'], 1, 'Satuan', 12, 'center']
+            ];
+
+            // Add column for each kelompok harga grosir
+            $startColumn = 'H';
+            $kelompokColumns = [];
+            if(isset($dataKelompokHargaGrosir) && !empty($dataKelompokHargaGrosir)){
+                foreach($dataKelompokHargaGrosir as $kelompok){
+                    $arrHeaderData[] = [[$startColumn], 1, $kelompok->NAMAKELOMPOK, 15, 'right'];
+                    $kelompokColumns[$kelompok->IDKELOMPOKHARGAGROSIR] = $startColumn;
+                    $startColumn++;
+                }
+            }
+
+            $rowStartDocument           =   1;
+            $documentProperties         =   $spreadsheetGenerator->getDocumentProperties($rowStartDocument, $arrTitleData, $arrFilterData, $arrHeaderData);
+            $rowStartFilter             =   $documentProperties['rowStartFilter'];
+            $rowStartTableHeader        =   $documentProperties['rowStartTableHeader'];
+            $rowNumberTableContent      =   $documentProperties['rowNumberTableContent'];
+            $rowFirstTable              =   $documentProperties['rowFirstTable'];
+            $columnFirstTable           =   $arrHeaderData[0][0][0];
+            $columnLastTable            =   end(end($arrHeaderData)[0]);
+
+            $spreadsheetGenerator->setDocumentTitle($activeWorksheet, $arrTitleData, $columnFirstTable, $columnLastTable, $rowStartDocument);
+            $spreadsheetGenerator->setDocumentFilter($activeWorksheet, $arrFilterData, $columnLastTable, $rowStartFilter);
+            $spreadsheetGenerator->setDocumentTableHeader($activeWorksheet, $arrHeaderData, $rowStartTableHeader);
+
+            if(isset($dataLaporan) && !empty($dataLaporan)){
+                $barangSKUModel =   new BarangSKUModel();
+                foreach($dataLaporan as $keyDataLaporan){
+                    $idBarangSKU    =   isset($keyDataLaporan->IDBARANGSKU) && $keyDataLaporan->IDBARANGSKU != "" ? $keyDataLaporan->IDBARANGSKU : 0;
+                    $idBarangSatuan =   isset($keyDataLaporan->IDBARANGSATUAN) && $keyDataLaporan->IDBARANGSATUAN != "" ? $keyDataLaporan->IDBARANGSATUAN : 0;
+                    $atributSKU     =   $barangSKUModel->getArrAtributSKU($idBarangSKU);
+                    $atributSKU     =   isset($atributSKU) && !empty($atributSKU) ? implode(',', $atributSKU) : '-';
+
+                    // Get harga grosir for this SKU
+                    $dataHargaGrosir    =   $pengaturanHargaJualModel->getHargaBarangSKUGrosir($idBarangSKU, $idBarangSatuan);
+
+                    $activeWorksheet
+                    ->setCellValue('A'.$rowNumberTableContent, $keyDataLaporan->NAMAKATEGORI)
+                    ->setCellValue('B'.$rowNumberTableContent, $keyDataLaporan->NAMAMERK)
+                    ->setCellValue('C'.$rowNumberTableContent, $keyDataLaporan->NAMABARANG)
+                    ->setCellValue('D'.$rowNumberTableContent, $keyDataLaporan->KODEBARANG.'-'.$keyDataLaporan->KODESKU)
+                    ->setCellValue('E'.$rowNumberTableContent, $keyDataLaporan->DESKRIPSISKU)
+                    ->setCellValue('F'.$rowNumberTableContent, $atributSKU)
+                    ->setCellValue('G'.$rowNumberTableContent, $keyDataLaporan->NAMASATUAN);
+
+                    // Fill in harga grosir columns
+                    if(isset($dataHargaGrosir) && !empty($dataHargaGrosir)){
+                        foreach($dataHargaGrosir as $hargaGrosir){
+                            $idKelompok = $hargaGrosir->IDKELOMPOKHARGAGROSIR;
+                            if(isset($kelompokColumns[$idKelompok])){
+                                $column = $kelompokColumns[$idKelompok];
+                                $activeWorksheet->setCellValue($column.$rowNumberTableContent, intval($hargaGrosir->HARGA));
+                            }
+                        }
+                    }
+
+                    $rowNumberTableContent++;
+                }
+            } else {
+                $activeWorksheet->setCellValue($columnFirstTable.$rowNumberTableContent, 'Tidak ada data harga barang grosir yang ditemukan');
+                $activeWorksheet->mergeCells($columnFirstTable.$rowNumberTableContent.':'.$columnLastTable.$rowNumberTableContent);
+            }
+		
+            $spreadsheetGenerator->setDocumentTableStyle($activeWorksheet, $columnFirstTable, $columnLastTable, $rowFirstTable, $rowNumberTableContent);
+            $spreadsheetGenerator->writeDocumentOutput($spreadsheet, 'Laporan_Harga_Barang_Grosir');
+        } catch (\Throwable $th) {
+            return throwResponseInternalServerError('[E-AUTH-001] Internal server error', [$th]);
+        }
     }
 
     public function saveDetailHargaJual()

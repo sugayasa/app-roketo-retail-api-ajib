@@ -198,4 +198,49 @@ class PengaturanHargaJualModel extends Model
         if(is_null($result)) return false;
         return $result;
 	}
+
+    public function getDaftarHargaJualRetail($idToko, $idBarangKategori, $idBarangMerk)
+    {	
+        $this->select("A.IDBARANGSKU, C.NAMAKATEGORI, D.NAMAMERK, B.KODEBARANG, B.NAMABARANG, A.KODESKU, A.DESKRIPSI AS DESKRIPSISKU, E.NAMASATUAN, '[]' AS ATRIBUTSKUSTR,
+                    IFNULL(G.HARGABELIRERATA, 0) AS HARGABELIRERATA, IFNULL(F.HARGA, 0) AS HARGAJUAL");
+        $this->from('m_barangsku A', true);
+        $this->join('m_barang AS B', 'A.IDBARANG = B.IDBARANG', 'LEFT');
+        $this->join('m_barangkategori AS C', 'B.IDBARANGKATEGORI = C.IDBARANGKATEGORI', 'LEFT');
+        $this->join('m_barangmerk AS D', 'B.IDBARANGMERK = D.IDBARANGMERK', 'LEFT');
+        $this->join('m_barangsatuan AS E', 'A.IDBARANGSATUAN = E.IDBARANGSATUAN', 'LEFT');
+        $this->join('t_baranghargajual AS F', 'A.IDBARANGSKU = F.IDBARANGSKU AND A.IDBARANGSATUAN = F.IDBARANGSATUAN AND F.IDTOKO = ' . $idToko, 'INNER');
+
+        $subQuery   =   $this->db->table('t_tokonotamutasibarang AS GA');
+        $subQuery->select('GA.IDBARANGSKU, AVG(GA.HARGAGROSIR) AS HARGABELIRERATA');
+        $subQuery->join('t_tokonotamutasirekap AS GB', 'GA.IDTOKONOTAMUTASIREKAP = GB.IDTOKONOTAMUTASIREKAP', 'LEFT');
+        $subQuery->where('GB.IDTOKO', $idToko);
+        $subQuery->groupBy('GA.IDBARANGSKU');
+        $subQuery   =   $subQuery->getCompiledSelect();
+
+        $this->join('(' . $subQuery . ') AS G', 'A.IDBARANGSKU = G.IDBARANGSKU', 'LEFT');
+
+        if(isset($idBarangKategori) && $idBarangKategori != 0 && $idBarangKategori != "") $this->where('B.IDBARANGKATEGORI', $idBarangKategori);
+        if(isset($idBarangMerk) && $idBarangMerk != 0 && $idBarangMerk != "") $this->where('B.IDBARANGMERK', $idBarangMerk);
+        $this->groupBy('A.IDBARANGSKU, F.IDBARANGSATUAN');
+        $this->orderBy('C.NAMAKATEGORI, D.NAMAMERK, B.NAMABARANG, A.KODESKU', 'ASC');
+
+        return $this;
+	}
+
+    public function getDaftarHargaJualGrosir($idBarangKategori, $idBarangMerk)
+    {	
+        $this->select("A.IDBARANGSKU, A.IDBARANGSATUAN, C.NAMAKATEGORI, D.NAMAMERK, B.KODEBARANG, B.NAMABARANG, A.KODESKU, A.DESKRIPSI AS DESKRIPSISKU, E.NAMASATUAN, '[]' AS ATRIBUTSKUSTR");
+        $this->from('m_barangsku A', true);
+        $this->join('m_barang AS B', 'A.IDBARANG = B.IDBARANG', 'LEFT');
+        $this->join('m_barangkategori AS C', 'B.IDBARANGKATEGORI = C.IDBARANGKATEGORI', 'LEFT');
+        $this->join('m_barangmerk AS D', 'B.IDBARANGMERK = D.IDBARANGMERK', 'LEFT');
+        $this->join('m_barangsatuan AS E', 'A.IDBARANGSATUAN = E.IDBARANGSATUAN', 'LEFT');
+
+        if(isset($idBarangKategori) && $idBarangKategori != 0 && $idBarangKategori != "") $this->where('B.IDBARANGKATEGORI', $idBarangKategori);
+        if(isset($idBarangMerk) && $idBarangMerk != 0 && $idBarangMerk != "") $this->where('B.IDBARANGMERK', $idBarangMerk);
+        $this->groupBy('A.IDBARANGSKU, A.IDBARANGSATUAN');
+        $this->orderBy('C.NAMAKATEGORI, D.NAMAMERK, B.NAMABARANG, A.KODESKU', 'ASC');
+
+        return $this;
+	}
 }

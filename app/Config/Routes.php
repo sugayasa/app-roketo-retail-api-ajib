@@ -411,12 +411,13 @@ $routes->group('pos', ['filter' => 'auth:mustBeLoggedIn'], function($routes) {
 $routes->group('erp', [], function($routes) {
     $routes->group('stok', [], function($routes) {
         $routes->group('stokBarang', function($routes) {
-            $functionRoute =   'ERP\Stok\StokBarang';
+            $functionRoute  =   'ERP\Stok\StokBarang';
             $routes->get('excelDataStokGudang/(:any)', $functionRoute.'::excelDataStokGudang/$1');
             $routes->get('excelDataStokToko/(:any)', $functionRoute.'::excelDataStokToko/$1');
         });
+
         $routes->group('pengaturanHargaJual', function($routes) {
-            $functionRoute =   'ERP\Stok\PengaturanHargaJual';
+            $functionRoute  =   'ERP\Stok\PengaturanHargaJual';
             $routes->get('excelDataHargaJualRetail/(:any)', $functionRoute.'::excelDataHargaJualRetail/$1');
             $routes->get('excelDataHargaJualGrosir/(:any)', $functionRoute.'::excelDataHargaJualGrosir/$1');
         });
