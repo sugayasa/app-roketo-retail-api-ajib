@@ -182,12 +182,17 @@ class PengaturanHargaJual extends ResourceController
     public function getUrlExcelHargaJualByFilter()
     {
         $rules  =   [
+            'tipeHargaJual'     =>  ['label' => 'Tipe Harga Jual', 'rules' => 'required|in_list[R,G]'],
             'idToko'            =>  ['label' => 'Id Toko', 'rules' => 'required|alpha_numeric'],
             'idBarangKategori'  =>  ['label' => 'Id Kategori', 'rules' => 'permit_empty|alpha_numeric'],
             'idBarangMerk'      =>  ['label' => 'Id Merk', 'rules' => 'permit_empty|alpha_numeric'],
         ];
 
         $messages   =   [
+            'tipeHargaJual'     =>  [
+                'required'      =>  'Harap pilih tipe harga jual terlebih dahulu',
+                'in_list'       =>  'Tipe harga jual tidak valid, silakan periksa kembali'
+            ],
             'idToko'  =>  [
                 'required'      =>  'Harap pilih toko terlebih dahulu',
                 'alpha_numeric' =>  'Toko yang dipilih tidak valid, silakan periksa kembali'
@@ -202,6 +207,7 @@ class PengaturanHargaJual extends ResourceController
 
         if(!$this->validate($rules, $messages)) return $this->fail($this->validator->getErrors());
 
+        $tipeHargaJual      =   $this->request->getVar('tipeHargaJual');
         $idToko             =   $this->request->getVar('idToko');
         $idToko             =   isset($idToko) && $idToko != "" ? hashidDecode($idToko) : 0;
         $idBarangKategori   =   $this->request->getVar('idBarangKategori');
@@ -214,7 +220,8 @@ class PengaturanHargaJual extends ResourceController
             'idBarangMerk'      =>  $idBarangMerk
         ];
         $arrParametersEncode        =   encodeJWTToken($arrParameters);
-        $urlExcelHargaJualRetail    =   base_url(URL_EXCEL_ERP_DATA_HARGA_BARANG_RETAIL).$arrParametersEncode;
+        $baseURLFunctionExcelData   =   $tipeHargaJual == 'R' ? URL_EXCEL_ERP_DATA_HARGA_BARANG_RETAIL : URL_EXCEL_ERP_DATA_HARGA_BARANG_GROSIR;
+        $urlExcelHargaJualRetail    =   base_url($baseURLFunctionExcelData).$arrParametersEncode;
 
         return $this->setResponseFormat('json')->respond([
             "urlExcel"      =>  $urlExcelHargaJualRetail

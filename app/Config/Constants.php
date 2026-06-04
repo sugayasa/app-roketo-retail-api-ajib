@@ -195,6 +195,7 @@ defined('URL_EXCEL_ERP_DATA_PERSEDIAAN_BARANG_TOKO')    || define('URL_EXCEL_ERP
 defined('URL_EXCEL_ERP_DATA_STOK_GUDANG')               || define('URL_EXCEL_ERP_DATA_STOK_GUDANG', $_ENV['URL_EXCEL_ERP_DATA_STOK_GUDANG'] ?: 'erp/stok/stokBarang/excelDataStokGudang/');
 defined('URL_EXCEL_ERP_DATA_STOK_TOKO')                 || define('URL_EXCEL_ERP_DATA_STOK_TOKO', $_ENV['URL_EXCEL_ERP_DATA_STOK_TOKO'] ?: 'erp/stok/stokBarang/excelDataStokToko/');
 defined('URL_EXCEL_ERP_DATA_HARGA_BARANG_RETAIL')       || define('URL_EXCEL_ERP_DATA_HARGA_BARANG_RETAIL', $_ENV['URL_EXCEL_ERP_DATA_HARGA_BARANG_RETAIL'] ?: 'erp/stok/pengaturanHargaJual/excelDataHargaJualRetail/');
+defined('URL_EXCEL_ERP_DATA_HARGA_BARANG_GROSIR')      || define('URL_EXCEL_ERP_DATA_HARGA_BARANG_GROSIR', $_ENV['URL_EXCEL_ERP_DATA_HARGA_BARANG_GROSIR'] ?: 'erp/stok/pengaturanHargaJual/excelDataHargaJualGrosir/');
 
 defined('URL_EXCEL_WH_DATA_STOK_GUDANG')                || define('URL_EXCEL_WH_DATA_STOK_GUDANG', $_ENV['URL_EXCEL_WH_DATA_STOK_GUDANG'] ?: 'wh/stok/stokBarang/excelDataStokGudang/');
 defined('URL_EXCEL_WH_DATA_STOK_TOKO')                  || define('URL_EXCEL_WH_DATA_STOK_TOKO', $_ENV['URL_EXCEL_WH_DATA_STOK_TOKO'] ?: 'wh/stok/stokBarang/excelDataStokToko/');

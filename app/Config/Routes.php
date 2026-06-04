@@ -418,6 +418,7 @@ $routes->group('erp', [], function($routes) {
         $routes->group('pengaturanHargaJual', function($routes) {
             $functionRoute =   'ERP\Stok\PengaturanHargaJual';
             $routes->get('excelDataHargaJualRetail/(:any)', $functionRoute.'::excelDataHargaJualRetail/$1');
+            $routes->get('excelDataHargaJualGrosir/(:any)', $functionRoute.'::excelDataHargaJualGrosir/$1');
         });
     });
 
