@@ -201,8 +201,9 @@ class PengaturanHargaJualModel extends Model
 
     public function getDaftarHargaJualRetail($idToko, $idBarangKategori, $idBarangMerk)
     {	
-        $this->select("A.IDBARANGSKU, C.NAMAKATEGORI, D.NAMAMERK, B.KODEBARANG, B.NAMABARANG, A.KODESKU, A.DESKRIPSI AS DESKRIPSISKU, E.NAMASATUAN, '[]' AS ATRIBUTSKUSTR,
-                    IFNULL(G.HARGABELIRERATA, 0) AS HARGABELIRERATA, IFNULL(F.HARGA, 0) AS HARGAJUAL");
+        $this->select(
+            "A.IDBARANGSKU, C.NAMAKATEGORI, D.NAMAMERK, B.KODEBARANG, B.NAMABARANG, A.KODESKU, A.DESKRIPSI AS DESKRIPSISKU,
+            E.NAMASATUAN, '[]' AS ATRIBUTSKUSTR, IFNULL(G.HARGABELIRERATA, 0) AS HARGABELIRERATA, IFNULL(MAX(F.HARGA), 0) AS HARGAJUAL");
         $this->from('m_barangsku A', true);
         $this->join('m_barang AS B', 'A.IDBARANG = B.IDBARANG', 'LEFT');
         $this->join('m_barangkategori AS C', 'B.IDBARANGKATEGORI = C.IDBARANGKATEGORI', 'LEFT');
@@ -229,7 +230,10 @@ class PengaturanHargaJualModel extends Model
 
     public function getDaftarHargaJualGrosir($idBarangKategori, $idBarangMerk)
     {	
-        $this->select("A.IDBARANGSKU, A.IDBARANGSATUAN, C.NAMAKATEGORI, D.NAMAMERK, B.KODEBARANG, B.NAMABARANG, A.KODESKU, A.DESKRIPSI AS DESKRIPSISKU, E.NAMASATUAN, '[]' AS ATRIBUTSKUSTR");
+        $this->select(
+            "A.IDBARANGSKU, A.IDBARANGSATUAN, C.NAMAKATEGORI, D.NAMAMERK, B.KODEBARANG, B.NAMABARANG, A.KODESKU,
+            A.DESKRIPSI AS DESKRIPSISKU, E.NAMASATUAN, '[]' AS ATRIBUTSKUSTR"
+        );
         $this->from('m_barangsku A', true);
         $this->join('m_barang AS B', 'A.IDBARANG = B.IDBARANG', 'LEFT');
         $this->join('m_barangkategori AS C', 'B.IDBARANGKATEGORI = C.IDBARANGKATEGORI', 'LEFT');

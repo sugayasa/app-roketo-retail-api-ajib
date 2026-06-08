@@ -41,8 +41,11 @@ class DashboardRetailModel extends Model
     
     public function getDataPenjualanPerTanggal($tglAwalBulanTahun, $tglAkhirBulanTahun)
     {	
-        $this->select("DATE_FORMAT(B.INPUTTANGGALWAKTU, '%d') AS TANGGAL, DATE_FORMAT(B.INPUTTANGGALWAKTU, '%d/%m') AS TANGGALDM, E.NAMAKATEGORI,
-                    COUNT(DISTINCT(A.IDPENJUALANREKAP)) AS JUMLAHTRANSAKSI, IFNULL(SUM(A.JUMLAH), 0) AS JUMLAHITEM, SUM(A.JUMLAH * A.HARGASATUAN) AS TOTALPENJUALAN");
+        $this->select(
+            "DATE_FORMAT(B.INPUTTANGGALWAKTU, '%d') AS TANGGAL, DATE_FORMAT(B.INPUTTANGGALWAKTU, '%d/%m') AS TANGGALDM,
+            E.NAMAKATEGORI, COUNT(DISTINCT(A.IDPENJUALANREKAP)) AS JUMLAHTRANSAKSI, IFNULL(SUM(A.JUMLAH), 0) AS JUMLAHITEM,
+            SUM(A.JUMLAH * A.HARGASATUAN) AS TOTALPENJUALAN"
+        );
         $this->from('t_penjualanbarang AS A', true);
         $this->join('t_penjualanrekap B', 'A.IDPENJUALANREKAP = B.IDPENJUALANREKAP', 'LEFT');
         $this->join('m_barangsku C', 'A.IDBARANGSKU = C.IDBARANGSKU', 'LEFT');
@@ -51,7 +54,7 @@ class DashboardRetailModel extends Model
         $this->where('DATE(B.INPUTTANGGALWAKTU) >= ', $tglAwalBulanTahun);
         $this->where('DATE(B.INPUTTANGGALWAKTU) <=', $tglAkhirBulanTahun);
         $this->where('E.STATUS =', 1);
-        $this->groupBy('DATE(B.INPUTTANGGALWAKTU), E.NAMAKATEGORI');
+        $this->groupBy('TANGGAL, TANGGALDM, E.NAMAKATEGORI');
         $this->orderBy('TANGGAL');
 
         $result     =   $this->get()->getResultObject();

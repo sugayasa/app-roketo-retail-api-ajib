@@ -41,8 +41,11 @@ class DashboardGrosirModel extends Model
     
     public function getDataMutasiPerTanggal($tglAwalBulanTahun, $tglAkhirBulanTahun)
     {	
-        $this->select("DATE_FORMAT(B.PROSESTANGGALWAKTU, '%d') AS TANGGAL, DATE_FORMAT(B.PROSESTANGGALWAKTU, '%d/%m') AS TANGGALDM, E.NAMAKATEGORI,
-                    COUNT(DISTINCT(A.IDTOKONOTAMUTASIREKAP)) AS JUMLAHTRANSAKSI, IFNULL(SUM(A.JUMLAH), 0) AS JUMLAHITEM, SUM(A.JUMLAH * A.HARGAGROSIR) AS TOTALPENJUALANGROSIR");
+        $this->select(
+            "DATE_FORMAT(B.PROSESTANGGALWAKTU, '%d') AS TANGGAL, DATE_FORMAT(B.PROSESTANGGALWAKTU, '%d/%m') AS TANGGALDM,
+            E.NAMAKATEGORI, COUNT(DISTINCT(A.IDTOKONOTAMUTASIREKAP)) AS JUMLAHTRANSAKSI, IFNULL(SUM(A.JUMLAH), 0) AS JUMLAHITEM,
+            SUM(A.JUMLAH * A.HARGAGROSIR) AS TOTALPENJUALANGROSIR"
+        );
         $this->from('t_tokonotamutasibarang AS A', true);
         $this->join('t_tokonotamutasirekap B', 'A.IDTOKONOTAMUTASIREKAP = B.IDTOKONOTAMUTASIREKAP', 'LEFT');
         $this->join('m_barangsku C', 'A.IDBARANGSKU = C.IDBARANGSKU', 'LEFT');
@@ -51,7 +54,7 @@ class DashboardGrosirModel extends Model
         $this->where('DATE(B.PROSESTANGGALWAKTU) >= ', $tglAwalBulanTahun);
         $this->where('DATE(B.PROSESTANGGALWAKTU) <=', $tglAkhirBulanTahun);
         $this->where('E.STATUS =', 1);
-        $this->groupBy('DATE(B.PROSESTANGGALWAKTU), E.NAMAKATEGORI');
+        $this->groupBy('TANGGAL, TANGGALDM, E.NAMAKATEGORI');
         $this->orderBy('TANGGAL');
 
         $result     =   $this->get()->getResultObject();

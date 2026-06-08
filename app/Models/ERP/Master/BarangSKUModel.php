@@ -85,7 +85,12 @@ class BarangSKUModel extends Model
         $subQuery2  =   $subQuery2->getCompiledSelect();
 
         $unionQuery =   "({$subQuery1}) UNION ALL ({$subQuery2})";
-        $finalQuery =   $this->db->query("SELECT IDBARANGSATUAN, NAMASATUAN FROM ({$unionQuery}) AS A WHERE IDBARANGSATUAN IS NOT NULL GROUP BY IDBARANGSATUAN");
+        $finalQuery =   $this->db->query(
+                            "SELECT IDBARANGSATUAN, NAMASATUAN
+                            FROM ({$unionQuery}) AS A
+                            WHERE IDBARANGSATUAN IS NOT NULL
+                            GROUP BY IDBARANGSATUAN, NAMASATUAN"
+                        );
         $result     =   $finalQuery->getResultObject();
 
         if(is_null($result)) return [];

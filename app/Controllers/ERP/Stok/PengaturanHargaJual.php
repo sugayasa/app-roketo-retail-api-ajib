@@ -331,14 +331,14 @@ class PengaturanHargaJual extends ResourceController
                 [['I'], 1, 'Harga Jual', 12, 'right']
             ];
 
-            $rowStartDocument           =   1;
-            $documentProperties         =   $spreadsheetGenerator->getDocumentProperties($rowStartDocument, $arrTitleData, $arrFilterData, $arrHeaderData);
-            $rowStartFilter             =   $documentProperties['rowStartFilter'];
-            $rowStartTableHeader        =   $documentProperties['rowStartTableHeader'];
-            $rowNumberTableContent      =   $documentProperties['rowNumberTableContent'];
-            $rowFirstTable              =   $documentProperties['rowFirstTable'];
-            $columnFirstTable           =   $arrHeaderData[0][0][0];
-            $columnLastTable            =   end(end($arrHeaderData)[0]);
+            $rowStartDocument       =   1;
+            $documentProperties     =   $spreadsheetGenerator->getDocumentProperties($rowStartDocument, $arrTitleData, $arrFilterData, $arrHeaderData);
+            $rowStartFilter         =   $documentProperties['rowStartFilter'];
+            $rowStartTableHeader    =   $documentProperties['rowStartTableHeader'];
+            $rowNumberTableContent  =   $documentProperties['rowNumberTableContent'];
+            $rowFirstTable          =   $documentProperties['rowFirstTable'];
+            $columnFirstTable       =   $arrHeaderData[0][0][0];
+            $columnLastTable        =   end(end($arrHeaderData)[0]);
 
             $spreadsheetGenerator->setDocumentTitle($activeWorksheet, $arrTitleData, $columnFirstTable, $columnLastTable, $rowStartDocument);
             $spreadsheetGenerator->setDocumentFilter($activeWorksheet, $arrFilterData, $columnLastTable, $rowStartFilter);
@@ -359,17 +359,17 @@ class PengaturanHargaJual extends ResourceController
                     ->setCellValue('E'.$rowNumberTableContent, $keyDataLaporan->DESKRIPSISKU)
                     ->setCellValue('F'.$rowNumberTableContent, $atributSKU)
                     ->setCellValue('G'.$rowNumberTableContent, $keyDataLaporan->NAMASATUAN)
-                    ->setCellValue('H'.$rowNumberTableContent, intval($keyDataLaporan->STOK))
-                    ->setCellValue('I'.$rowNumberTableContent, intval($keyDataLaporan->HARGABELIRERATA));
+                    ->setCellValue('H'.$rowNumberTableContent, intval($keyDataLaporan->HARGABELIRERATA))
+                    ->setCellValue('I'.$rowNumberTableContent, intval($keyDataLaporan->HARGAJUAL));
                     $rowNumberTableContent++;
                 }
             } else {
-                $activeWorksheet->setCellValue($columnFirstTable.$rowNumberTableContent, 'Tidak ada data stok barang yang ditemukan');
+                $activeWorksheet->setCellValue($columnFirstTable.$rowNumberTableContent, 'Tidak ada data harga jual barang yang ditemukan');
                 $activeWorksheet->mergeCells($columnFirstTable.$rowNumberTableContent.':'.$columnLastTable.$rowNumberTableContent);
             }
 		
             $spreadsheetGenerator->setDocumentTableStyle($activeWorksheet, $columnFirstTable, $columnLastTable, $rowFirstTable, $rowNumberTableContent);
-            $spreadsheetGenerator->writeDocumentOutput($spreadsheet, 'Laporan_Stok_Barang_Toko');
+            $spreadsheetGenerator->writeDocumentOutput($spreadsheet, 'Data_Harga_Jual_Barang_Toko');
         } catch (\Throwable $th) {
             return throwResponseInternalServerError('[E-AUTH-001] Internal server error', [$th]);
         }
@@ -390,14 +390,12 @@ class PengaturanHargaJual extends ResourceController
             $baseData           =   $pengaturanHargaJualModel->getDaftarHargaJualGrosir($idBarangKategori, $idBarangMerk);
             $dataLaporan        =   $baseData->asObject()->findAll(99999, 0);
             
-            // Get kelompok harga grosir
-            $dataKelompokHargaGrosir    =   $pengaturanHargaJualModel->getDataKelompokHargaGrosir();
-
+            $dataKelompokHargaGrosir=   $pengaturanHargaJualModel->getDataKelompokHargaGrosir();
             $spreadsheet            =   new Spreadsheet();
             $spreadsheetGenerator   =   new SpreadsheetGenerator();
             $activeWorksheet        =   $spreadsheet->getActiveSheet();
 
-            $arrTitleData   =   ['Laporan Data Harga Jual Barang Grosir'];
+            $arrTitleData   =   ['Data Harga Jual Barang Grosir'];
             $arrFilterData  =   [
                 ['Kategori Barang', $mainOperation->getDetailBarangKategori($idBarangKategori)['NAMAKATEGORI']],
                 ['Merk', $mainOperation->getDetailBarangMerk($idBarangMerk)['NAMAMERK']],
@@ -416,24 +414,24 @@ class PengaturanHargaJual extends ResourceController
             ];
 
             // Add column for each kelompok harga grosir
-            $startColumn = 'H';
-            $kelompokColumns = [];
+            $startColumn        =   'H';
+            $kelompokColumns    =   [];
             if(isset($dataKelompokHargaGrosir) && !empty($dataKelompokHargaGrosir)){
                 foreach($dataKelompokHargaGrosir as $kelompok){
-                    $arrHeaderData[] = [[$startColumn], 1, $kelompok->NAMAKELOMPOK, 15, 'right'];
+                    $arrHeaderData[] = [[$startColumn], 1, $kelompok->KELOMPOKHARGAGROSIR, 15, 'right'];
                     $kelompokColumns[$kelompok->IDKELOMPOKHARGAGROSIR] = $startColumn;
                     $startColumn++;
                 }
             }
 
-            $rowStartDocument           =   1;
-            $documentProperties         =   $spreadsheetGenerator->getDocumentProperties($rowStartDocument, $arrTitleData, $arrFilterData, $arrHeaderData);
-            $rowStartFilter             =   $documentProperties['rowStartFilter'];
-            $rowStartTableHeader        =   $documentProperties['rowStartTableHeader'];
-            $rowNumberTableContent      =   $documentProperties['rowNumberTableContent'];
-            $rowFirstTable              =   $documentProperties['rowFirstTable'];
-            $columnFirstTable           =   $arrHeaderData[0][0][0];
-            $columnLastTable            =   end(end($arrHeaderData)[0]);
+            $rowStartDocument       =   1;
+            $documentProperties     =   $spreadsheetGenerator->getDocumentProperties($rowStartDocument, $arrTitleData, $arrFilterData, $arrHeaderData);
+            $rowStartFilter         =   $documentProperties['rowStartFilter'];
+            $rowStartTableHeader    =   $documentProperties['rowStartTableHeader'];
+            $rowNumberTableContent  =   $documentProperties['rowNumberTableContent'];
+            $rowFirstTable          =   $documentProperties['rowFirstTable'];
+            $columnFirstTable       =   $arrHeaderData[0][0][0];
+            $columnLastTable        =   end(end($arrHeaderData)[0]);
 
             $spreadsheetGenerator->setDocumentTitle($activeWorksheet, $arrTitleData, $columnFirstTable, $columnLastTable, $rowStartDocument);
             $spreadsheetGenerator->setDocumentFilter($activeWorksheet, $arrFilterData, $columnLastTable, $rowStartFilter);
@@ -446,9 +444,7 @@ class PengaturanHargaJual extends ResourceController
                     $idBarangSatuan =   isset($keyDataLaporan->IDBARANGSATUAN) && $keyDataLaporan->IDBARANGSATUAN != "" ? $keyDataLaporan->IDBARANGSATUAN : 0;
                     $atributSKU     =   $barangSKUModel->getArrAtributSKU($idBarangSKU);
                     $atributSKU     =   isset($atributSKU) && !empty($atributSKU) ? implode(',', $atributSKU) : '-';
-
-                    // Get harga grosir for this SKU
-                    $dataHargaGrosir    =   $pengaturanHargaJualModel->getHargaBarangSKUGrosir($idBarangSKU, $idBarangSatuan);
+                    $dataHargaGrosir=   $pengaturanHargaJualModel->getHargaBarangSKUGrosir($idBarangSKU, $idBarangSatuan);
 
                     $activeWorksheet
                     ->setCellValue('A'.$rowNumberTableContent, $keyDataLaporan->NAMAKATEGORI)
