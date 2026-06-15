@@ -159,6 +159,14 @@ $routes->group('erp', ['filter' => 'auth:mustBeLoggedIn'], function($routes) {
             $routes->post('saveDetailHargaJualGrosir', $functionRoute.'::saveDetailHargaJualGrosir');
         });
 
+        $routes->group('pengaturanHargaJualPaket', function($routes) {
+            $functionRoute  =   'ERP\Stok\PengaturanHargaJualPaket';
+            $routes->post('getListPaket', $functionRoute.'::getListPaket');
+            $routes->post('getDetailPaket', $functionRoute.'::getDetailPaket');
+            $routes->post('addHargaJualPaket', $functionRoute.'::addHargaJualPaket');
+            $routes->post('updateHargaJualPaket', $functionRoute.'::updateHargaJualPaket');
+        });
+
         $routes->group('pengaturanDiskon', function($routes) {
             $routes->group('retail', function($routes) {
                 $functionRoute  =   'ERP\Stok\PengaturanDiskon';
