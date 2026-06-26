@@ -64,4 +64,54 @@ class PengaturanHargaJualPaketModel extends Model
 
         return $this;
 	}
+
+    public function getDetailHargaJualPaket($namaPaket)
+    {
+        $this->select(
+            "MIN(IDHARGARETAILPAKET) AS IDHARGARETAILPAKET, GROUP_CONCAT(DISTINCT IDTOKO) AS ARRIDTOKO, NAMAHARGARETAILPAKET,
+            DESKRIPSI, MAX(JUMLAHBARANG) AS JUMLAHBARANG, MIN(STATUS) AS STATUS"
+        );
+        $this->from('t_hargaretailpaket', true);
+        $this->where('NAMAHARGARETAILPAKET', $namaPaket);
+        $this->groupBy('NAMAHARGARETAILPAKET, DESKRIPSI');
+
+        $result =   $this->get()->getRowArray();
+
+        if(is_null($result)) return false;
+        return $result;
+	}
+
+    public function getDataBarangPaket($idHargaRetailPaket)
+    {
+        $this->select(
+            "A.IDBARANGSKU, B.KODESKU, '[]' AS ATRIBUTSKUSTR, B.DESKRIPSI AS DESKRIPSISKU, 0 AS HARGATERENDAH,
+            0 AS HARGATERTINGGI, A.JUMLAH, A.HARGA AS HARGAPAKET"
+        );
+        $this->from('t_hargaretailpaketsku AS A', true);
+        $this->join('m_barangsku AS B', 'A.IDBARANGSKU = B.IDBARANGSKU', 'LEFT');
+        $this->where('A.IDHARGARETAILPAKET', $idHargaRetailPaket);
+
+        $result =   $this->get()->getResultObject();
+
+        if(is_null($result)) return [];
+        return $result;
+	}
+
+    public function getHargaJualBarangSKU($idBarangSKU)
+    {
+        $this->select(
+            "MIN(HARGA) AS HARGATERENDAH, MAX(HARGA) AS HARGATERTINGGI"
+        );
+        $this->from('t_baranghargajual', true);
+        $this->where('IDBARANGSKU', $idBarangSKU);
+        $this->groupBy('IDBARANGSKU');
+
+        $result =   $this->get()->getRowArray();
+
+        if(is_null($result)) return [
+            "HARGATERENDAH" =>  0,
+            "HARGATERTINGGI"=>  0
+        ];
+        return $result;
+	}
 }

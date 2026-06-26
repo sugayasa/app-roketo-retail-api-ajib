@@ -617,16 +617,17 @@ class PengaturanDiskon extends ResourceController
 
     private function getJsonDataArrIdTokoBerlaku($arrIdTokoBerlaku)
     {
+        $result =   [];
+
         if(is_array($arrIdTokoBerlaku) && count($arrIdTokoBerlaku) > 0) {
-            $arrIdTokoBerlaku   =   array_map(function($idTokoBerlaku) {
+            foreach($arrIdTokoBerlaku as $idTokoBerlaku) {
                 $idTokoBerlaku  =   hashidDecode($idTokoBerlaku);
-                if(!$idTokoBerlaku) return throwResponseNotAcceptable('Data kiriman [Daftar Toko Berlaku] tidak valid, silakan periksa kembali');
-                return $idTokoBerlaku;
-            }, $arrIdTokoBerlaku);
-        } else {
-            $arrIdTokoBerlaku   =   [];
+                if($idTokoBerlaku && $idTokoBerlaku > 0 && is_numeric($idTokoBerlaku)) {
+                    $result[] = $idTokoBerlaku;
+                }
+            }
         }
 
-        return json_encode($arrIdTokoBerlaku);
+        return json_encode($result);
     }
 }

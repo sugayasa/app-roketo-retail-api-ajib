@@ -163,6 +163,7 @@ $routes->group('erp', ['filter' => 'auth:mustBeLoggedIn'], function($routes) {
             $functionRoute  =   'ERP\Stok\PengaturanHargaJualPaket';
             $routes->post('getListPaket', $functionRoute.'::getListPaket');
             $routes->post('getDetailPaket', $functionRoute.'::getDetailPaket');
+            $routes->post('getDetailBarangHarga', $functionRoute.'::getDetailBarangHarga');
             $routes->post('addHargaJualPaket', $functionRoute.'::addHargaJualPaket');
             $routes->post('updateHargaJualPaket', $functionRoute.'::updateHargaJualPaket');
         });

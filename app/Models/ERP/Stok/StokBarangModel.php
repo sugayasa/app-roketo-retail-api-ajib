@@ -41,8 +41,10 @@ class StokBarangModel extends Model
 
     public function getDaftarStokBarangGudang($idGudang, $idBarangKategori, $idBarangMerk, $jenisStok, $kataKunciPencarian, $urutan)
     {	
-        $this->select("A.IDBARANGSKU, C.NAMAKATEGORI, D.NAMAMERK, B.KODEBARANG, B.NAMABARANG, A.KODESKU, A.DESKRIPSI AS DESKRIPSISKU, E.NAMASATUAN, '[]' AS ATRIBUTSKUSTR,
-                    IFNULL(SUM(F.JUMLAHMASUK - F.JUMLAHKELUAR), 0) AS STOK, IFNULL(G.HARGABELIRERATA, 0) AS HARGABELIRERATA");
+        $this->select(
+            "A.IDBARANGSKU, C.NAMAKATEGORI, D.NAMAMERK, B.KODEBARANG, B.NAMABARANG, A.KODESKU, A.DESKRIPSI AS DESKRIPSISKU, E.NAMASATUAN, '[]' AS ATRIBUTSKUSTR,
+            IFNULL(SUM(F.JUMLAHMASUK - F.JUMLAHKELUAR), 0) AS STOK, IFNULL(G.HARGABELIRERATA, 0) AS HARGABELIRERATA"
+        );
         $this->from('m_barangsku A', true);
         $this->join('m_barang AS B', 'A.IDBARANG = B.IDBARANG', 'LEFT');
         $this->join('m_barangkategori AS C', 'B.IDBARANGKATEGORI = C.IDBARANGKATEGORI', 'LEFT');
@@ -92,8 +94,10 @@ class StokBarangModel extends Model
 
     public function getDaftarStokBarangToko($idToko, $idBarangKategori, $idBarangMerk, $jenisStok, $kataKunciPencarian, $urutan)
     {	
-        $this->select("A.IDBARANGSKU, C.NAMAKATEGORI, D.NAMAMERK, B.KODEBARANG, B.NAMABARANG, A.KODESKU, A.DESKRIPSI AS DESKRIPSISKU, E.NAMASATUAN, '[]' AS ATRIBUTSKUSTR,
-                    IFNULL(SUM(F.JUMLAHMASUK - F.JUMLAHKELUAR), 0) AS STOK, IFNULL(G.HARGABELIRERATA, 0) AS HARGABELIRERATA");
+        $this->select(
+            "A.IDBARANGSKU, C.NAMAKATEGORI, D.NAMAMERK, B.KODEBARANG, B.NAMABARANG, A.KODESKU, A.DESKRIPSI AS DESKRIPSISKU, E.NAMASATUAN, '[]' AS ATRIBUTSKUSTR,
+            IFNULL(SUM(F.JUMLAHMASUK - F.JUMLAHKELUAR), 0) AS STOK, IFNULL(G.HARGABELIRERATA, 0) AS HARGABELIRERATA"
+        );
         $this->from('m_barangsku A', true);
         $this->join('m_barang AS B', 'A.IDBARANG = B.IDBARANG', 'LEFT');
         $this->join('m_barangkategori AS C', 'B.IDBARANGKATEGORI = C.IDBARANGKATEGORI', 'LEFT');

@@ -94,3 +94,18 @@ if(!function_exists('encodeDataArrayKey')){
         }
     }
 }
+
+if(!function_exists('encodeDataArrayId')){
+    function encodeDataArrayId($dataArray, $keyDefault = false){
+        $arrReturn  =   [];
+        if(is_array($dataArray) && count($dataArray) > 0){
+            foreach($dataArray as $idData){
+                $arrReturn[]    =   hashidEncode($idData, $keyDefault);
+            }
+        } else {
+            $arrReturn[]    =   hashidEncode($dataArray, $keyDefault);
+        }
+
+        return $arrReturn;
+    }
+}
