@@ -111,7 +111,19 @@ class PembelianBarang extends ResourceController
     {
         $barangModel                =   new BarangModel();
         $listOptionMerkNamaBarang   =   $barangModel
-                                        ->select("A.IDBARANG AS IDBARANG, CONCAT('[', C.NAMAKATEGORI, '] [', B.NAMAMERK, '] [', A.KODEBARANG, '] ', A.NAMABARANG) AS NAMABARANG")
+                                        ->select(
+                                            "A.IDBARANG AS IDBARANG,
+                                            CONCAT(
+                                                '[',
+                                                IFNULL(C.NAMAKATEGORI, '-'),
+                                                '] [',
+                                                IFNULL(B.NAMAMERK, '-'),
+                                                '] [',
+                                                IFNULL(A.KODEBARANG, '-'),
+                                                '] '
+                                                , A.NAMABARANG
+                                            ) AS NAMABARANG"
+                                        )
                                         ->from('m_barang A', true)
                                         ->join('m_barangmerk AS B', 'B.IDBARANGMERK = A.IDBARANGMERK', 'LEFT')
                                         ->join('m_barangkategori AS C', 'C.IDBARANGKATEGORI = A.IDBARANGKATEGORI', 'LEFT')
