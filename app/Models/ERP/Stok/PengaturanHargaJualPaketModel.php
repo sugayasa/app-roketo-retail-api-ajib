@@ -65,12 +65,18 @@ class PengaturanHargaJualPaketModel extends Model
         return $this;
 	}
 
-    public function getDetailHargaJualPaket($namaPaket)
+    public function getDetailHargaJualPaket($namaPaket, $includeArrIdHargaRetailPaket = false)
     {
+        $arrIdHargaRetailPaketSelect  =   "";
+        if($includeArrIdHargaRetailPaket) {
+            $arrIdHargaRetailPaketSelect  =   ", GROUP_CONCAT(DISTINCT IDHARGARETAILPAKET) AS ARRIDHARGARETAILPAKET";
+        }
+
         $this->select(
             "MIN(IDHARGARETAILPAKET) AS IDHARGARETAILPAKET, GROUP_CONCAT(DISTINCT IDTOKO) AS ARRIDTOKO, NAMAHARGARETAILPAKET,
-            DESKRIPSI, MAX(JUMLAHBARANG) AS JUMLAHBARANG, MIN(STATUS) AS STATUS"
+            DESKRIPSI, MAX(JUMLAHBARANG) AS JUMLAHBARANG, MIN(STATUS) AS STATUS" . $arrIdHargaRetailPaketSelect
         );
+
         $this->from('t_hargaretailpaket', true);
         $this->where('NAMAHARGARETAILPAKET', $namaPaket);
         $this->groupBy('NAMAHARGARETAILPAKET, DESKRIPSI');
@@ -114,4 +120,15 @@ class PengaturanHargaJualPaketModel extends Model
         ];
         return $result;
 	}
+
+    public function deleteDataIdBarangSKUPaket($idBarangSKU, $arrIdHargaRetailPaket){
+        if($idBarangSKU > 0 && count($arrIdHargaRetailPaket) > 0){
+            return $this->db->table('t_hargaretailpaketsku')
+                            ->where('IDBARANGSKU', $idBarangSKU)
+                            ->whereIn('IDHARGARETAILPAKET', $arrIdHargaRetailPaket)
+                            ->delete();
+        }
+
+        return false;
+    }
 }
