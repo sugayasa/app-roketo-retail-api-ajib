@@ -48,7 +48,8 @@ class PengaturanHargaJualPaketModel extends Model
     {
         $this->select(
             "MIN(A.IDHARGARETAILPAKET) AS IDHARGARETAILPAKET, A.NAMAHARGARETAILPAKET, GROUP_CONCAT(DISTINCT A.DESKRIPSI) AS DESKRIPSI,
-            COUNT(DISTINCT A.IDTOKO) AS TOTALTOKO, MAX(A.JUMLAHBARANG) AS JUMLAHBARANG, MIN(A.STATUS) AS STATUS, '' AS STATUSSTR"
+            COUNT(DISTINCT IF(A.STATUS = 1, A.IDTOKO, NULL)) AS TOTALTOKO, MAX(A.JUMLAHBARANG) AS JUMLAHBARANG, MAX(A.STATUS) AS STATUS,
+            '' AS STATUSSTR"
         );
         $this->from('t_hargaretailpaket AS A', true);
 
@@ -73,8 +74,8 @@ class PengaturanHargaJualPaketModel extends Model
         }
 
         $this->select(
-            "MIN(IDHARGARETAILPAKET) AS IDHARGARETAILPAKET, GROUP_CONCAT(DISTINCT IDTOKO) AS ARRIDTOKO, NAMAHARGARETAILPAKET,
-            DESKRIPSI, MAX(JUMLAHBARANG) AS JUMLAHBARANG, MIN(STATUS) AS STATUS" . $arrIdHargaRetailPaketSelect
+            "MIN(IDHARGARETAILPAKET) AS IDHARGARETAILPAKET, GROUP_CONCAT(DISTINCT IF(STATUS = 1, IDTOKO, NULL)) AS ARRIDTOKO, NAMAHARGARETAILPAKET,
+            DESKRIPSI, MAX(JUMLAHBARANG) AS JUMLAHBARANG, MAX(STATUS) AS STATUS" . $arrIdHargaRetailPaketSelect
         );
 
         $this->from('t_hargaretailpaket', true);
@@ -118,6 +119,19 @@ class PengaturanHargaJualPaketModel extends Model
             "HARGATERENDAH" =>  0,
             "HARGATERTINGGI"=>  0
         ];
+        return $result;
+	}
+
+    public function isPaketTokoExist($idTokoBerlakuBertambah, $namaPaket)
+    {
+        $this->select('IDHARGARETAILPAKET');
+        $this->from('t_hargaretailpaket', true);
+        $this->where('IDTOKO', $idTokoBerlakuBertambah);
+        $this->where('NAMAHARGARETAILPAKET', $namaPaket);
+
+        $result =   $this->get()->getRowArray();
+
+        if(is_null($result)) return false;
         return $result;
 	}
 

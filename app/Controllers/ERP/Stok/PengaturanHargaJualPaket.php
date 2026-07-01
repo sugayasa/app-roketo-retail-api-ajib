@@ -96,7 +96,7 @@ class PengaturanHargaJualPaket extends ResourceController
         if($dataDetail){
             $idHargaRetailPaket         =   $dataDetail['IDHARGARETAILPAKET'];
             $arrIdTokoBerlaku           =   explode(',', $dataDetail['ARRIDTOKO']);
-            $dataDetail['ARRIDTOKO']    =   encodeDataArrayId($arrIdTokoBerlaku, true);
+            $dataDetail['ARRIDTOKO']    =   encodeDataArrayId($arrIdTokoBerlaku);
             $daftarBarangPaket          =   $pengaturanHargaJualPaketModel->getDataBarangPaket($idHargaRetailPaket);
             
             $barangSKUModel         =   new BarangSKUModel();
@@ -323,22 +323,29 @@ class PengaturanHargaJualPaket extends ResourceController
             }
 
             foreach($arrIdTokoBerlakuBertambah as $idTokoBerlakuBertambah){
-                $arrInsertDataPaket =   [
-                    'IDTOKO'                =>  $idTokoBerlakuBertambah,
-                    'NAMAHARGARETAILPAKET'  =>  $namaPaket,
-                    'DESKRIPSI'             =>  $deskripsi,
-                    'JUMLAHBARANG'          =>  $jumlahBarang,
-                    'STATUS'                =>  1
-                ];
-                $procInsertDataPaket=   $mainOperation->insertDataTable('t_hargaretailpaket', $arrInsertDataPaket);
+                $isPaketTokoExist   =   $pengaturanHargaJualPaketModel->isPaketTokoExist($idTokoBerlakuBertambah, $namaPaket);
 
-                if($procInsertDataPaket['status']) {
-                    $idHargaRetailPaket   =   $procInsertDataPaket['insertID'];
+                if(!$isPaketTokoExist){
+                    $arrInsertDataPaket =   [
+                        'IDTOKO'                =>  $idTokoBerlakuBertambah,
+                        'NAMAHARGARETAILPAKET'  =>  $namaPaket,
+                        'DESKRIPSI'             =>  $deskripsi,
+                        'JUMLAHBARANG'          =>  $jumlahBarang,
+                        'STATUS'                =>  1
+                    ];
+                    $procInsertDataPaket=   $mainOperation->insertDataTable('t_hargaretailpaket', $arrInsertDataPaket);
 
-                    foreach($arrInsertDataDetailPaketPool as $arrInsertDataDetailPaket){
-                        $arrInsertDataDetailPaket['IDHARGARETAILPAKET'] =   $idHargaRetailPaket;
-                        $mainOperation->insertDataTable('t_hargaretailpaketsku', $arrInsertDataDetailPaket);
+                    if($procInsertDataPaket['status']) {
+                        $idHargaRetailPaket   =   $procInsertDataPaket['insertID'];
+
+                        foreach($arrInsertDataDetailPaketPool as $arrInsertDataDetailPaket){
+                            $arrInsertDataDetailPaket['IDHARGARETAILPAKET'] =   $idHargaRetailPaket;
+                            $mainOperation->insertDataTable('t_hargaretailpaketsku', $arrInsertDataDetailPaket);
+                        }
                     }
+                } else {
+                    $idHargaRetailPaketUpdate   =   $isPaketTokoExist['IDHARGARETAILPAKET'];
+                    $mainOperation->updateDataTable('t_hargaretailpaket', ['STATUS' => 1], ['IDHARGARETAILPAKET' => $idHargaRetailPaketUpdate]);
                 }
             }
         }
@@ -383,7 +390,7 @@ class PengaturanHargaJualPaket extends ResourceController
         if($jumlahBarang != $jumlahBarangOrigin) $arrUpdateHargaRetailPaket['JUMLAHBARANG'] =   $jumlahBarang;
 
         if(count($arrUpdateHargaRetailPaket) > 0){
-            $mainOperation->updateDataTable('t_hargaretailpaket', $arrUpdateHargaRetailPaket, ['NAMAHARGARETAILPAKET' => $namaPaket]);
+            $mainOperation->updateDataTable('t_hargaretailpaket', $arrUpdateHargaRetailPaket, ['NAMAHARGARETAILPAKET' => $namaPaketOrigin]);
         }
 
         return throwResponseOK(
